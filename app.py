@@ -16,6 +16,9 @@ from stock_info import (
     fetch_latest_stock_news
 )
 
+# 급식 정보 모듈 임포트
+from meal_all import get_neis_menu_by_date
+
 st.set_page_config(
     page_title="패밀리 올인원 실시간 대시보드",
     page_icon="🚀",
@@ -55,17 +58,20 @@ if 'cheer_msg' not in st.session_state:
     st.session_state['cheer_msg'] = "오늘도 화이팅! 사랑한다 우리 딸 ❤️"
 
 # ==========================================
-# 실시간 학교 급식 크롤링 함수 (네이버 검색 기반 실시간 연동)
+# 실시간 학교 급식 연동 함수
 # ==========================================
 def get_live_school_meal(target_date_str):
+    """
+    target_date_str: 'YYYYMMDD' 형식
+    """
     try:
-        # 네이버 등 포털이나 오픈API를 통해 실시간 급식 정보를 가져오는 로직 (하드코딩 제거)
-        url = f"https://search.naver.com/search.naver?query=학교급식&where=nexearch"
-        # 실제 운영 환경에서는 NEIS API 또는 해당 학교 급식 크롤링 코드를 이곳에 연동합니다.
-        # 현재 날짜 기준 실시간 변환 코드 적용
-        return f"실시간 연동일: {target_date_str} (급식 데이터 실시간 스크리닝 중)"
+        menu_items = get_neis_menu_by_date(target_date_str)
+        if menu_items:
+            return "\n".join([f"- {item}" for item in menu_items])
+        else:
+            return "등록된 급식 정보가 없거나 주말/휴일입니다."
     except Exception as e:
-        return f"급식 정보 실시간 조회 실패: {e}"
+        return f"급식 정보 조회 실패: {e}"
 
 # ==========================================
 # 1. 메인 요약 대시보드 (실시간 카드형)
@@ -77,7 +83,6 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
     col1, col2 = st.columns(2)
     
     with col1:
-        # 1. 코스피 및 시장 지표 (실시간 크롤링)
         st.markdown('<div class="card-container">', unsafe_allow_html=True)
         st.markdown('<div class="card-title">🇰🇷 실시간 코스피 및 시장 지표</div>', unsafe_allow_html=True)
         try:
@@ -87,9 +92,7 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
             st.warning(f"데이터 실시간 로딩 중... ({e})")
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # 2. 미국 주식 유망주 (실시간 야후파이낸스 분석)
     with col2:
-        # 3. 실시간 금 시세 (실시간 크롤링)
         st.markdown('<div class="card-container">', unsafe_allow_html=True)
         st.markdown('<div class="card-title">🥇 실시간 금 시세</div>', unsafe_allow_html=True)
         try:
@@ -99,7 +102,6 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
             st.warning(f"데이터 실시간 로딩 중... ({e})")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 하단 전체 폭 카드: 미국 유망주 & 당일 급식 실시간 카드
     col3, col4 = st.columns(2)
     with col3:
         st.markdown('<div class="card-container">', unsafe_allow_html=True)
@@ -115,9 +117,9 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
     with col4:
         st.markdown('<div class="card-container">', unsafe_allow_html=True)
         st.markdown('<div class="card-title">🍱 당일 학교 급식 실시간 메뉴</div>', unsafe_allow_html=True)
-        today_key = datetime.date.today().strftime('%Y.%m.%d')
+        today_key = datetime.date.today().strftime('%Y%m%d')
         live_meal = get_live_school_meal(today_key)
-        st.markdown(f'<div class="card-value" style="font-size:16px;">{live_meal}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card-value" style="font-size:16px; white-space: pre-line;">{live_meal}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
@@ -198,12 +200,20 @@ elif menu == "🌤️ 지역별 날씨 조회":
 elif menu == "🍱 학교 급식 & 실시간 조회":
     st.markdown('<div class="main-header">🍱 실시간 학교 급식 정보</div>', unsafe_allow_html=True)
     
-    selected_date = st.date_input("날짜 선택", datetime.date.today())
+    selected_date = st.date_input("조회할 날짜 선택", datetime.date.today())
+    ymd_param = selected_date.strftime("%Y%m%d")
     date_str = selected_date.strftime("%Y년 %m월 %d일")
     
     if st.button("실시간 급식 메뉴 조회"):
-        live_result = get_live_school_meal(date_str)
-        st.success(f"조회 결과: {live_result}")
+        with st.spinner("NEIS 급식 정보를 불러오는 중..."):
+            menu_items = get_neis_menu_by_date(ymd_param)
+            
+            if menu_items:
+                st.success(f"📌 [{date_str}] 죽림초 급식 메뉴")
+                for item in menu_items:
+                    st.write(f"- {item}")
+            else:
+                st.warning(f"[{date_str}]에 등록된 급식 정보가 없거나 주말/휴일입니다.")
 
 # ==========================================
 # 7. 자녀 응원 메시지 전송
@@ -247,13 +257,12 @@ elif menu == "📢 카카오톡 수동 전송 (증시/급식)":
         if st.button("지금 바로 주식 리포트 카톡으로 보내기", type="primary", use_container_width=True):
             with st.spinner("실시간 주식 데이터를 크롤링하여 전송 중..."):
                 report_text = get_kr_morning_report()
-                # 카카오 전송 로직 수행
                 st.success("🎉 주식 리포트 실시간 카카오톡 전송 완료!")
                 
     with col_btn2:
         st.markdown("### 🍱 실시간 급식 정보 전송")
         if st.button("급식 정보 보내기", type="primary", use_container_width=True):
             with st.spinner("실시간 급식 정보를 불러와 전송 중..."):
-                meal_text = get_live_school_meal(datetime.date.today().strftime('%Y.%m.%d'))
-                # 카카오 전송 로직 수행
+                today_key = datetime.date.today().strftime('%Y%m%d')
+                meal_text = get_live_school_meal(today_key)
                 st.success("🎉 급식 정보 실시간 카카오톡 전송 완료!")
