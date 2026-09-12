@@ -25,13 +25,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# UI 스타일링
+# UI 스타일링 (간결화)
 st.markdown("""
     <style>
     .main-header { font-size: 26px; font-weight: bold; color: #1E3A8A; margin-bottom: 15px; }
-    .card-container { background-color: #FFFFFF; padding: 20px; border-radius: 12px; border: 1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 15px; }
-    .card-title { font-size: 18px; font-weight: bold; color: #334155; margin-bottom: 10px; }
-    .card-value { font-size: 20px; font-weight: bold; color: #0F172A; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -61,9 +58,6 @@ if 'cheer_msg' not in st.session_state:
 # 실시간 학교 급식 연동 함수
 # ==========================================
 def get_live_school_meal(target_date_str):
-    """
-    target_date_str: 'YYYYMMDD' 형식
-    """
     try:
         menu_items = get_neis_menu_by_date(target_date_str)
         if menu_items:
@@ -79,48 +73,47 @@ def get_live_school_meal(target_date_str):
 if menu == "📊 메인 요약 대시보드 (실시간 카드)":
     st.markdown('<div class="main-header">📊 패밀리 실시간 핵심 요약 대시보드</div>', unsafe_allow_html=True)
     st.write(f"실시간 조회 시각: {get_kst_now().strftime('%Y-%m-%d %H:%M:%S')}")
+    st.markdown("---")
 
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown('<div class="card-container">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">🇰🇷 실시간 코스피 및 시장 지표</div>', unsafe_allow_html=True)
-        try:
-            kospi_str, _ = fetch_market_extra_info()
-            st.markdown(f'<div class="card-value">{kospi_str}</div>', unsafe_allow_html=True)
-        except Exception as e:
-            st.warning(f"데이터 실시간 로딩 중... ({e})")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.subheader("🇰🇷 실시간 코스피 및 시장 지표")
+        with st.container(border=True):
+            try:
+                kospi_str, _ = fetch_market_extra_info()
+                st.markdown(f"### {kospi_str}")
+            except Exception as e:
+                st.warning(f"데이터 실시간 로딩 중... ({e})")
         
     with col2:
-        st.markdown('<div class="card-container">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">🥇 실시간 금 시세</div>', unsafe_allow_html=True)
-        try:
-            _, gold_str = fetch_market_extra_info()
-            st.markdown(f'<div class="card-value">{gold_str}</div>', unsafe_allow_html=True)
-        except Exception as e:
-            st.warning(f"데이터 실시간 로딩 중... ({e})")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.subheader("🥇 실시간 금 시세")
+        with st.container(border=True):
+            try:
+                _, gold_str = fetch_market_extra_info()
+                st.markdown(f"### {gold_str}")
+            except Exception as e:
+                st.warning(f"데이터 실시간 로딩 중... ({e})")
 
+    st.markdown("")
     col3, col4 = st.columns(2)
+    
     with col3:
-        st.markdown('<div class="card-container">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">🇺🇸 미국 주식 실시간 수급 상위</div>', unsafe_allow_html=True)
-        try:
-            nvda = yf.Ticker("NVDA").history(period="1d")
-            nvda_price = nvda['Close'].iloc[-1] if not nvda.empty else 0
-            st.markdown(f'<div class="card-value">NVIDIA (NVDA): ${nvda_price:,.2f}</div>', unsafe_allow_html=True)
-        except:
-            st.markdown('<div class="card-value">실시간 시세 연동 중...</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.subheader("🇺🇸 미국 주식 실시간 수급 상위")
+        with st.container(border=True):
+            try:
+                nvda = yf.Ticker("NVDA").history(period="1d")
+                nvda_price = nvda['Close'].iloc[-1] if not nvda.empty else 0
+                st.markdown(f"### NVIDIA (NVDA): ${nvda_price:,.2f}")
+            except:
+                st.markdown("### 실시간 시세 연동 중...")
 
     with col4:
-        st.markdown('<div class="card-container">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">🍱 당일 학교 급식 실시간 메뉴</div>', unsafe_allow_html=True)
-        today_key = datetime.date.today().strftime('%Y%m%d')
-        live_meal = get_live_school_meal(today_key)
-        st.markdown(f'<div class="card-value" style="font-size:16px; white-space: pre-line;">{live_meal}</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.subheader("🍱 당일 학교 급식 실시간 메뉴")
+        with st.container(border=True):
+            today_key = datetime.date.today().strftime('%Y%m%d')
+            live_meal = get_live_school_meal(today_key)
+            st.markdown(f"<div style='font-size:16px; white-space: pre-line;'>{live_meal}</div>", unsafe_allow_html=True)
 
 # ==========================================
 # 2. 1분 실시간 증시 & 뉴스
@@ -132,22 +125,24 @@ elif menu == "⚡ 1분 실시간 증시 & 뉴스":
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### 🔥 관심종목 실시간 시세")
-        for ticker in st.session_state['favorites']:
-            try:
-                t_obj = yf.Ticker(f"{ticker}.KS" if ticker.isdigit() else ticker)
-                hist = t_obj.history(period="2d")
-                if not hist.empty:
-                    curr = hist['Close'].iloc[-1]
-                    prev = hist['Close'].iloc[-2]
-                    chg = ((curr - prev) / prev) * 100
-                    st.write(f"- **{ticker}**: `{curr:,.2f}` ({chg:+.2f}%)")
-            except:
-                st.write(f"- **{ticker}**: 실시간 조회 실패")
+        with st.container(border=True):
+            for ticker in st.session_state['favorites']:
+                try:
+                    t_obj = yf.Ticker(f"{ticker}.KS" if ticker.isdigit() else ticker)
+                    hist = t_obj.history(period="2d")
+                    if not hist.empty:
+                        curr = hist['Close'].iloc[-1]
+                        prev = hist['Close'].iloc[-2]
+                        chg = ((curr - prev) / prev) * 100
+                        st.write(f"- **{ticker}**: `{curr:,.2f}` ({chg:+.2f}%)")
+                except:
+                    st.write(f"- **{ticker}**: 실시간 조회 실패")
     with col2:
         st.markdown("### 📰 실시간 증시 뉴스")
-        news_items = fetch_latest_stock_news()
-        for news in news_items:
-            st.markdown(f"> {news}")
+        with st.container(border=True):
+            news_items = fetch_latest_stock_news()
+            for news in news_items:
+                st.markdown(f"> {news}")
 
 # ==========================================
 # 3. 종목 검색 및 즐겨찾기
