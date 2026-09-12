@@ -11,9 +11,10 @@ def get_kst_now():
     return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
 
 # ==========================================
-# 실시간 수급 & 지표 크롤링 함수들
+# ☀️ [오전 전용] 실시간 수급 & 지표 크롤링 함수들
 # ==========================================
 
+# 1. 네이버 금융 외국인/기관 순매수 TOP 3 실시간 크롤링
 def fetch_kr_net_buy_top3():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -46,11 +47,13 @@ def fetch_kr_net_buy_top3():
 
     return foreign_top3, inst_top3
 
+# 2. 코스피(KOSPI) 및 실시간 금 시세 (출처 표기 & 주말 NaN 방지 패치 완료)
 def fetch_market_extra_info():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     
+    # 1) 코스피 지수 정보 (실시간 / 주말 및 공휴일 NaN 방지 처리)
     kospi_str = "• 코스피: 정보 수집 실패"
     try:
         ticker_kospi = yf.Ticker("^KS11")
@@ -66,6 +69,7 @@ def fetch_market_extra_info():
         print(f"코스피 크롤링 예외: {e}")
         kospi_str = "• 코스피: 실시간 정보 수집 불가"
 
+    # 2) 금 시세 (출처 명시 추가)
     gold_str = "• 금 시세: 정보 수집 실패"
     source_label = "네이버 금융 기준"
     try:
@@ -112,6 +116,7 @@ def fetch_market_extra_info():
 
     return kospi_str, gold_str
 
+# 3. 실시간 국내 핫 종목 동적 스크리닝
 def fetch_realtime_kr_hot_tickers():
     tickers = []
     headers = {
@@ -136,6 +141,7 @@ def fetch_realtime_kr_hot_tickers():
         
     return tickers[:30]
 
+# 4. 국내 종목 실시간 기술적 분석
 def analyze_kr_stock(ticker_symbol, name=""):
     try:
         ticker = yf.Ticker(f"{ticker_symbol}.KS")
@@ -183,6 +189,7 @@ def analyze_kr_stock(ticker_symbol, name=""):
     except Exception as e:
         return None
 
+# 5. 미국 주요 종목 실시간 분석
 def analyze_us_stock_morning(symbol, name):
     try:
         ticker = yf.Ticker(symbol)
@@ -223,11 +230,13 @@ def analyze_us_stock_morning(symbol, name):
     except Exception as e:
         return None
 
+# 6. 네이버 금융 주요 뉴스 크롤링 함수 (다중 선택자 보완 패치 완료)
 def fetch_latest_stock_news():
     news_list = []
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
+    
     urls = [
         "https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258",
         "https://finance.naver.com/news/main.naver"
@@ -237,6 +246,8 @@ def fetch_latest_stock_news():
         try:
             res = requests.get(url, headers=headers, timeout=5)
             soup = BeautifulSoup(res.content.decode('euc-kr', 'replace'), "html.parser")
+            
+            # 여러 형태의 뉴스 제목 태그 동시 탐색
             titles = soup.select("a.tit") or soup.select("ul.newsList span a") or soup.select(".articleSubject a")
             
             for item in titles[:2]:
@@ -257,6 +268,7 @@ def fetch_latest_stock_news():
         
     return news_list
 
+# 7. [☀️ 오전 리포트 생성 함수]
 def get_kr_morning_report():
     now_str = get_kst_now().strftime("%Y-%m-%d")
     
@@ -299,13 +311,13 @@ def get_kr_morning_report():
     except:
         pass
 
-    msg = f"📊 [오늘({now_str}) 조건 검색 포착 리포트]\n\n"
+    msg = f"📊 [오늘({now_str}) 조건 검색 포착 리포트]\n"
     msg += "KR 국내주식 조건 포착\n"
     for item in kr_res[:2]:
         msg += f"• {item['name']}: {item['price']} ({item['chg']})\n"
         msg += f" 👉 [{item['tag']}]\n"
         
-    msg += "\nUS 미국주식 조건 포착\n"
+    msg += "US 미국주식 조건 포착\n"
     for item in us_res[:2]:
         msg += f"• {item['name']}: {item['price']} ({item['chg']})\n"
         msg += f" 👉 [{item['tag']}]\n"
@@ -319,14 +331,10 @@ def get_kr_morning_report():
     msg += f"{gold_str}\n\n"
     
     msg += "[국내 외국인 순매수 TOP 3 (실시간)]\n"
-    for row in foreign_top3:
-        msg += f"  {row}\n"
-    msg += "\n"
+    msg += "\n".join([f"  {row}" for row in foreign_top3]) + "\n\n"
     
     msg += "[국내 기관 순매수 TOP 3 (실시간)]\n"
-    for row in inst_top3:
-        msg += f"  {row}\n"
-    msg += "\n"
+    msg += "\n".join([f"  {row}" for row in inst_top3]) + "\n\n"
     
     msg += "[미국 증시 수급/모멘텀 TOP 3 (실시간)]\n"
     us_sorted = sorted(us_res, key=lambda x: x.get('chg_raw', 0), reverse=True)[:3]
@@ -353,85 +361,240 @@ def get_kr_morning_report():
     
     return msg
 
-def get_kakao_friends_uuids(access_token):
-    friends_url = "https://kapi.kakao.com/v1/api/talk/friends"
-    headers = {"Authorization": f"Bearer {access_token}"}
+# ==========================================
+# 🌙 [밤 전용] 요청하신 22:00 고정 코드
+# ==========================================
+
+def fetch_realtime_us_hot_tickers():
+    tickers = []
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    urls = [
+        "https://finance.yahoo.com/markets/stocks/gainers/",
+        "https://finance.yahoo.com/markets/stocks/most-active/"
+    ]
+    
+    for url in urls:
+        try:
+            res = requests.get(url, headers=headers, timeout=5)
+            soup = BeautifulSoup(res.text, "html.parser")
+            links = soup.select("a[href*='/quote/']")
+            for link in links:
+                href = link['href']
+                symbol = href.split('/quote/')[1].split('/')[0].split('?')[0].upper()
+                if symbol.isalpha() and len(symbol) <= 5 and symbol not in tickers:
+                    tickers.append(symbol)
+        except Exception as e:
+            print(f"스크리너 크롤링 예외: {e}")
+            
+    if not tickers:
+        try:
+            sp500_url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+            tables = pd.read_html(sp500_url)
+            tickers = tables[0]['Symbol'].tolist()[:30]
+        except:
+            tickers = ["NVDA", "TSLA", "AAPL", "MSFT", "AMZN", "GOOGL", "META", "AMD", "PLTR", "COIN"]
+            
+    return tickers[:25]
+
+def analyze_us_stock_candidate(symbol):
     try:
-        res = requests.get(friends_url, headers=headers, timeout=10)
-        data = res.json()
-        if "elements" in data:
-            uuids = [friend["uuid"] for friend in data["elements"]]
-            print(f"👥 수신 동의한 친구 수: {len(uuids)}명")
-            return uuids
-        else:
-            print(f"⚠️ 친구 목록 응답 확인: {data}")
+        ticker = yf.Ticker(symbol)
+        info = ticker.fast_info
+        long_name = ticker.info.get('shortName', symbol)
+        
+        prev_close = info['previous_close']
+        
+        hist_1m = ticker.history(period="1d", interval="1m", prepost=True)
+        if hist_1m.empty:
+            return None
+            
+        curr_price = float(hist_1m['Close'].iloc[-1])
+        premarket_chg = ((curr_price - prev_close) / prev_close) * 100
+        
+        hist_daily = ticker.history(period="2mo", interval="1d").dropna(subset=['Close'])
+        if len(hist_daily) < 20:
+            return None
+            
+        delta = hist_daily['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        rs = gain / loss
+        rsi = float(100 - (100 / (1 + rs)).iloc[-1])
+        
+        vol_avg_5d = hist_daily['Volume'].iloc[-6:-1].mean()
+        curr_vol = float(hist_1m['Volume'].sum())
+        vol_ratio = (curr_vol / vol_avg_5d * 100) if vol_avg_5d > 0 else 100
+        
+        ma20 = hist_daily['Close'].rolling(20).mean().iloc[-1]
+        
+        score = (premarket_chg * 4) + (min(vol_ratio, 300) * 0.1) + (100 - abs(rsi - 60))
+        
+        reasons = []
+        if premarket_chg > 0:
+            reasons.append(f"프리마켓 {premarket_chg:+.2f}% 상승")
+        if vol_ratio >= 150:
+            reasons.append(f"거래량 {vol_ratio:.0f}% 급증")
+        if rsi <= 35:
+            reasons.append(f"RSI 과매도({rsi:.1f}) 반등")
+        elif 50 <= rsi <= 68:
+            reasons.append(f"RSI 상승모멘텀({rsi:.1f})")
+        if curr_price > ma20:
+            reasons.append("20일 이평 상회")
+            
+        return {
+            "symbol": symbol,
+            "name": long_name,
+            "price": curr_price,
+            "chg_pct": premarket_chg,
+            "rsi": rsi,
+            "vol_ratio": vol_ratio,
+            "score": score,
+            "reasons": reasons
+        }
     except Exception as e:
-        print(f"⚠️ 친구 목록 조회 실패: {e}")
-    return []
+        return None
+
+def get_us_night_report():
+    now_str = get_kst_now().strftime("%Y-%m-%d %H:%M")
+    
+    sp500_info = "• S&P500 선물: 수집 대기 중"
+    try:
+        es = yf.Ticker("ES=F")
+        prev_es = es.fast_info['previous_close']
+        hist_es = es.history(period="1d", interval="1m", prepost=True)
+        curr_es = float(hist_es['Close'].iloc[-1]) if not hist_es.empty else float(es.fast_info['last_price'])
+        chg_es = ((curr_es - prev_es) / prev_es) * 100
+        sp500_info = f"• S&P500 선물: {curr_es:,.2f}pt ({chg_es:+.2f}%)"
+    except Exception as e:
+        print(f"S&P 500 선물 수집 예외: {e}")
+
+    nq100_info = "• 나스닥100 선물: 수집 대기 중"
+    try:
+        nq = yf.Ticker("NQ=F")
+        prev_nq = nq.fast_info['previous_close']
+        hist_nq = nq.history(period="1d", interval="1m", prepost=True)
+        curr_nq = float(hist_nq['Close'].iloc[-1]) if not hist_nq.empty else float(nq.fast_info['last_price'])
+        chg_nq = ((curr_nq - prev_nq) / prev_nq) * 100
+        nq100_info = f"• 나스닥100 선물: {curr_nq:,.2f}pt ({chg_nq:+.2f}%)"
+    except Exception as e:
+        print(f"나스닥 100 선물 수집 예외: {e}")
+
+    dynamic_tickers = fetch_realtime_us_hot_tickers()
+    analyzed_stocks = []
+    
+    for symbol in dynamic_tickers:
+        res = analyze_us_stock_candidate(symbol)
+        if res:
+            analyzed_stocks.append(res)
+            
+    analyzed_stocks.sort(key=lambda x: x['score'], reverse=True)
+    top5 = analyzed_stocks[:5]
+    
+    msg = f"🌙 [미국 프리마켓 TOP 5 분석]\n"
+    msg += f"⏱️ {now_str} KST\n\n"
+    
+    msg += "📊 미국 지수 선물 동향\n"
+    msg += f"{sp500_info}\n"
+    msg += f"{nq100_info}\n\n"
+    
+    msg += "🔥 실시간 수급/지표 유망 TOP 5\n"
+    msg += "──────────\n\n"
+    
+    rank_icons = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+    
+    if top5:
+        for idx, item in enumerate(top5):
+            icon = rank_icons[idx] if idx < len(rank_icons) else f"{idx+1}위."
+            reason_str = " / ".join(item['reasons']) if item['reasons'] else "실시간 수급 유입"
+            
+            msg += f"{icon} {item['name']} ({item['symbol']})\n"
+            msg += f" 💵 현재가: ${item['price']:,.2f} ({item['chg_pct']:+.2f}%)\n"
+            msg += f" 📌 투자지표: {reason_str}\n"
+            
+            if idx < len(top5) - 1:
+                msg += "\n──────────\n\n"
+    else:
+        msg += "• 실시간 스크리닝 진행 중 (잠시 후 다시 시도)\n"
+        
+    msg += "\n──────────\n"
+    msg += "💡 야후파이낸스 실시간 동적 분석\n(22:30 미국 본장 개장)"
+    
+    return msg
 
 # ==========================================
-# 메인 실행 프로세스 (나와의 채팅 + 친구 전송)
+# 🚀 다중 계정 토큰 검증 및 시간 분기 실행부
 # ==========================================
+
 if __name__ == "__main__":
+    current_hour = get_kst_now().hour
+    
+    # 1. 시간대에 따라 리포트 종류 자동 분기 (오전 vs 밤)
+    if current_hour < 12:
+        print("☀️ [시간 분기] 오전 리포트 생성을 시작합니다.")
+        report_msg = get_kr_morning_report()
+    else:
+        print("🌙 [시간 분기] 밤 리포트 생성을 시작합니다.")
+        report_msg = get_us_night_report()
+        
+    # 2. 다중 계정(아빠, 자녀, 엄마) 환경변수 불러오기
     KAKAO_REST_API_KEY = os.environ.get("KAKAO_REST_API_KEY")
-    KAKAO_REFRESH_TOKEN = os.environ.get("KAKAO_REFRESH_TOKEN")
 
-    if KAKAO_REFRESH_TOKEN and KAKAO_REST_API_KEY:
+    accounts = [
+        ("아빠", os.environ.get("KAKAO_REFRESH_TOKEN")),
+        ("자녀", os.environ.get("KAKAO_REFRESH_TOKEN_CHILD")),
+        ("엄마", os.environ.get("KAKAO_REFRESH_TOKEN_MOM"))
+    ]
+
+    print("--- [환경변수 토큰 확인 시작] ---")
+    valid_accounts = []
+    for name, refresh_token in accounts:
+        if not refresh_token:
+            print(f"⚠️ [{name}] 리프레시 토큰이 비어있거나 읽어오지 못했습니다! (환경변수 이름 확인 필요)")
+            continue
+        
         token_url = "https://kauth.kakao.com/oauth/token"
         token_data = {
             "grant_type": "refresh_token",
             "client_id": KAKAO_REST_API_KEY,
-            "refresh_token": KAKAO_REFRESH_TOKEN
+            "refresh_token": refresh_token
         }
         token_res = requests.post(token_url, data=token_data).json()
         access_token = token_res.get("access_token")
-
+        
         if access_token:
-            report_msg = get_kr_morning_report()
-            
-            payload = {
-                "object_type": "text",
-                "text": report_msg,
-                "link": {
-                    "web_url": "https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258",
-                    "mobile_web_url": "https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258"
-                },
-                "button_title": "네이버 증권 뉴스 바로가기"
-            }
+            valid_accounts.append((name, access_token))
+            print(f"✅ [{name}] Access Token 발급 성공")
+        else:
+            print(f"❌ [{name}] Access Token 발급 실패 (토큰이 만료되었거나 잘못됨): {token_res}")
 
+    # 3. 유효한 계정들에게 카카오톡 메시지 순차 전송
+    if valid_accounts:
+        payload = {
+            "object_type": "text",
+            "text": report_msg,
+            "link": {
+                "web_url": "https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258",
+                "mobile_web_url": "https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258"
+            },
+            "button_title": "네이버 증권 뉴스 바로가기"
+        }
+        
+        p = {"template_object": json.dumps(payload, ensure_ascii=False)}
+
+        for name, access_token in valid_accounts:
             headers = {
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/x-www-form-urlencoded"
             }
-
-            # 1단계: 나와의 채팅방 전송
-            send_self_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
-            res_self = requests.post(send_self_url, headers=headers, data={"template_object": json.dumps(payload, ensure_ascii=False)})
-            if res_self.status_code == 200:
-                print("🎉 [나와의 채팅] 증시 리포트 전송 완료!")
+            send_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
+            send_res = requests.post(send_url, headers=headers, data=p)
+            if send_res.status_code == 200:
+                print(f"🎉 [{name}] 증시 리포트 전송 성공!")
             else:
-                print("❌ [나와의 채팅] 전송 실패:", res_self.json())
-            
-            time.sleep(0.3)
-
-            # 2단계: 동의한 친구들에게 일괄 전송
-            friends_uuids = get_kakao_friends_uuids(access_token)
-            if friends_uuids:
-                chunk_size = 5
-                for i in range(0, len(friends_uuids), chunk_size):
-                    batch_uuids = friends_uuids[i:i + chunk_size]
-                    send_friends_url = "https://kapi.kakao.com/v1/api/talk/friends/message/default/send"
-                    params = {
-                        "receiver_uuids": json.dumps(batch_uuids),
-                        "template_object": json.dumps(payload, ensure_ascii=False)
-                    }
-                    res_friend = requests.post(send_friends_url, headers=headers, data=params)
-                    if res_friend.status_code == 200:
-                        print(f"🎉 [친구 {len(batch_uuids)}명] 증시 리포트 전송 성공!")
-                    else:
-                        print(f"❌ [친구] 전송 실패:", res_friend.json())
-                    time.sleep(0.3)
-        else:
-            print("❌ Access Token 발급 실패:", token_res)
+                print(f"❌ [{name}] 증시 리포트 전송 실패:", send_res.json())
+            time.sleep(0.5)
     else:
-        print("⚠️ 환경변수(KAKAO_REST_API_KEY 또는 KAKAO_REFRESH_TOKEN)가 설정되지 않았습니다.")
+        print("⚠️ 전송 가능한 유효한 계정이 하나도 없습니다.")
