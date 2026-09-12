@@ -32,15 +32,15 @@ KAKAO_REFRESH_TOKEN = os.environ.get("KAKAO_REFRESH_TOKEN")
 ATPT_OFCDC_SC_CODE = "M10"
 SD_SCHUL_CODE = "8011201"
 
-# 3. NEIS 급식 API 조회 함수
-def get_neis_menu(ymd):
+# 3. NEIS 급식 API 조회 함수 (날짜별 파라미터 지원)
+def get_neis_menu_by_date(ymd_str):
     neis_url = "https://open.neis.go.kr/hub/mealServiceDietInfo"
     params = {
         "KEY": NEIS_API_KEY,
         "Type": "json",
         "ATPT_OFCDC_SC_CODE": ATPT_OFCDC_SC_CODE,
         "SD_SCHUL_CODE": SD_SCHUL_CODE,
-        "MLSV_YMD": ymd
+        "MLSV_YMD": ymd_str
     }
     try:
         res = requests.get(neis_url, params=params, timeout=10)
@@ -51,8 +51,12 @@ def get_neis_menu(ymd):
             items = [line.strip() for line in clean_menu.splitlines() if line.strip()]
             return items
     except Exception as e:
-        print(f"⚠️ NEIS API 오류 ({ymd}): {e}")
+        print(f"⚠️ NEIS API 오류 ({ymd_str}): {e}")
     return None
+
+# 기존 호환용 함수
+def get_neis_menu(ymd):
+    return get_neis_menu_by_date(ymd)
 
 # 4. 이미지 1:1 정사각형 가공 함수
 def process_image_to_square(image_bytes):
@@ -149,9 +153,8 @@ def get_kakao_friends_uuids(access_token):
         print(f"⚠️ 친구 목록 조회 실패: {e}")
     return []
 
-# 8. 메인 실행 프로세스
-if KAKAO_REFRESH_TOKEN and KAKAO_REST_API_KEY:
-    # 8-1. Access Token 갱신
+# 8. 메인 실행 프로세스 (GitHub Actions 자동화용)
+if __name__ == "__main__" and KAKAO_REFRESH_TOKEN and KAKAO_REST_API_KEY:
     token_url = "https://kauth.kakao.com/oauth/token"
     token_data = {
         "grant_type": "refresh_token",
@@ -168,7 +171,6 @@ if KAKAO_REFRESH_TOKEN and KAKAO_REST_API_KEY:
             payloads = []
 
             if current_hour < 10:
-                # ☀️ [오전 07:30] 오늘 메뉴 텍스트 메시지
                 text_template = {
                     "object_type": "text",
                     "text": f"🍱 오늘({today_display}) 죽림초 급식\n\n" + "\n".join(today_menu),
@@ -180,7 +182,6 @@ if KAKAO_REFRESH_TOKEN and KAKAO_REST_API_KEY:
                 payloads.append(text_template)
 
             else:
-                # 📸 [오후 12:50 / 14:00] 식판 사진 + 내일 급식
                 image_bytes = get_school_meal_image_bytes()
                 kakao_cdn_url = None
                 if image_bytes:
@@ -244,14 +245,12 @@ if KAKAO_REFRESH_TOKEN and KAKAO_REST_API_KEY:
                 "Content-Type": "application/x-www-form-urlencoded"
             }
 
-            # 8-2. [1단계] 나 자신에게 전송 (나와의 채팅방)
             for template in payloads:
                 send_self_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
                 requests.post(send_self_url, headers=headers, data={"template_object": json.dumps(template, ensure_ascii=False)})
                 time.sleep(0.3)
             print("🎉 [나와의 채팅] 전송 완료!")
 
-            # 8-3. [2단계] 동의한 친구들에게 일괄 전송 (친구 1:1 대화방)
             friends_uuids = get_kakao_friends_uuids(access_token)
             if friends_uuids:
                 chunk_size = 5
