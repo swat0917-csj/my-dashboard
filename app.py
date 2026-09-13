@@ -142,35 +142,37 @@ elif menu == "⚡ 1분 실시간 증시 & 뉴스":
                 st.markdown(f"> {news}")
 
 # ==========================================
-# 3. 종목 검색 및 즐겨찾기 (코스피 주요 100선 & S&P 주요 100선 내장)
+# 3. 종목 검색 및 즐겨찾기 (국내 / 미국 드롭다운 분리)
 # ==========================================
 elif menu == "🔍 종목 검색 & 즐겨찾기":
     st.markdown('<div class="main-header">🔍 실시간 종목 선택 및 조회</div>', unsafe_allow_html=True)
     
-    # 코스피 주요 종목 및 S&P 100 주요 종목 사전 데이터
-    popular_stocks = {
-        "--- 🇰🇷 국내 주요 코스피 종목 ---": "",
-        "삼성전자 (005930)": "005930.KS",
-        "SK하이닉스 (000660)": "000660.KS",
-        "LG에너지솔루션 (373220)": "373220.KS",
-        "삼성바이오로직스 (207940)": "207940.KS",
-        "현대차 (005380)": "005380.KS",
-        "기아 (000270)": "000270.KS",
-        "셀트리온 (068270)": "068270.KS",
-        "KB금융 (105560)": "105560.KS",
-        "신한지주 (055550)": "055550.KS",
-        "POSCO홀딩스 (005490)": "005490.KS",
-        "LG화학 (051910)": "051910.KS",
-        "NAVER (035420)": "035420.KS",
-        "카카오 (035720)": "035720.KS",
-        "삼성물산 (028260)": "028260.KS",
-        "현대모비스 (012330)": "012330.KS",
-        "하나금융지주 (086790)": "086790.KS",
-        "메리츠금융지주 (138040)": "138040.KS",
-        "HMM (011200)": "011200.KS",
-        "두산에너빌리티 (034020)": "034020.KS",
-        "HD현대중공업 (329180)": "329180.KS",
-        "--- 🇺🇸 미국 S&P 주요 종목 ---": "",
+    # 국내 주요 종목 사전
+    kr_stocks = {
+        "삼성전자": "005930.KS",
+        "SK하이닉스": "000660.KS",
+        "LG에너지솔루션": "373220.KS",
+        "삼성바이오로직스": "207940.KS",
+        "현대차": "005380.KS",
+        "기아": "000270.KS",
+        "셀트리온": "068270.KS",
+        "KB금융": "105560.KS",
+        "신한지주": "055550.KS",
+        "POSCO홀딩스": "005490.KS",
+        "LG화학": "051910.KS",
+        "NAVER": "035420.KS",
+        "카카오": "035720.KS",
+        "삼성물산": "028260.KS",
+        "현대모비스": "012330.KS",
+        "하나금융지주": "086790.KS",
+        "메리츠금융지주": "138040.KS",
+        "HMM": "011200.KS",
+        "두산에너빌리티": "034020.KS",
+        "HD현대중공업": "329180.KS"
+    }
+
+    # 미국 주요 종목 사전
+    us_stocks = {
         "엔비디아 (NVIDIA)": "NVDA",
         "테슬라 (Tesla)": "TSLA",
         "애플 (Apple)": "AAPL",
@@ -188,24 +190,36 @@ elif menu == "🔍 종목 검색 & 즐겨찾기":
         "코카콜라 (Coca-Cola)": "KO",
         "월마트 (Walmart)": "WMT"
     }
-    
-    selected_stock_label = st.selectbox("리스트에서 기업 선택", list(popular_stocks.keys()))
-    ticker_code = popular_stocks[selected_stock_label]
-    
-    # 직접 입력도 지원
-    custom_input = st.text_input("또는 직접 종목코드/심볼 입력 (예: 005930, AAPL)", "")
-    
-    target_ticker = custom_input.strip().upper() if custom_input.strip() else ticker_code
-    
-    if st.button("실시간 시세 조회 실행"):
+
+    tab_kr, tab_us, tab_custom = st.tabs(["🇰🇷 국내 주요 종목", "🇺🇸 미국 주요 종목", "⌨️ 직접 입력"])
+
+    target_ticker = ""
+
+    with tab_kr:
+        selected_kr_name = st.selectbox("국내 코스피 주요 종목 선택", list(kr_stocks.keys()))
+        target_ticker = kr_stocks[selected_kr_name]
+        st.write(선택한 종목 코드: `{target_ticker}`)
+
+    with tab_us:
+        selected_us_name = st.selectbox("미국 S&P 주요 종목 선택", list(us_stocks.keys()))
+        target_ticker = us_stocks[selected_us_name]
+        st.write(선택한 심볼: `{target_ticker}`)
+
+    with tab_custom:
+        custom_input = st.text_input("종목코드 또는 심볼 직접 입력 (예: 005930, AAPL)", "")
+        if custom_input.strip():
+            clean_input = custom_input.strip().upper()
+            target_ticker = f"{clean_input}.KS" if clean_input.isdigit() and not clean_input.endswith(".KS") else clean_input
+
+    st.markdown("")
+    if st.button("🚀 실시간 시세 조회 실행", type="primary"):
         if not target_ticker:
             st.warning("종목을 선택하거나 입력해 주세요.")
         else:
-            search_ticker = f"{target_ticker}.KS" if target_ticker.isdigit() and not target_ticker.endswith(".KS") else target_ticker
-            hist = yf.Ticker(search_ticker).history(period="1mo")
+            hist = yf.Ticker(target_ticker).history(period="1mo")
             if not hist.empty:
                 curr = hist['Close'].iloc[-1]
-                st.metric(label=f"실시간 현재가 ({search_ticker})", value=f"{curr:,.2f}")
+                st.metric(label=f"실시간 현재가 ({target_ticker})", value=f"{curr:,.2f}")
                 st.line_chart(hist['Close'])
             else:
                 st.error(f"'{target_ticker}'에 일치하는 종목 데이터를 찾을 수 없습니다.")
@@ -242,7 +256,6 @@ elif menu == "🌤️ 지역별 날씨 조회":
     if st.button("실시간 상세 날씨 가져오기"):
         try:
             info = city_coords[selected_city]
-            # 추가 날씨 데이터(습도, 기상상태 코드 등)를 포함하여 요청
             url = f"https://api.open-meteo.com/v1/forecast?latitude={info['lat']}&longitude={info['lon']}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature,precipitation_probability"
             w = requests.get(url).json()
             
@@ -251,21 +264,18 @@ elif menu == "🌤️ 지역별 날씨 조회":
             windspeed = curr['windspeed']
             weathercode = curr['weathercode']
             
-            # WMO 날씨 코드 해석 텍스트 변환
             weather_desc_map = {
                 0: "☀️ 맑음", 1: "🌤️ 대체로 맑음", 2: "⛅ 구름 조금", 3: "☁️ 흐림",
                 51: "🌧️ 이슬비", 61: "비", 63: "🌧️ 강한 비", 71: "❄️ 눈", 95: "⚡ 뇌우"
             }
             weather_status = weather_desc_map.get(weathercode, f"기상 코드: {weathercode}")
             
-            # 시간별 데이터에서 현재 시간에 맞는 습도 및 체감온도 추출
             hourly = w.get('hourly', {})
             humidity = "정보 없음"
             apparent_temp = "정보 없음"
             precip_prob = "정보 없음"
             
             if 'time' in hourly and len(hourly['time']) > 0:
-                # 현재 시각과 가장 가까운 인덱스 추정 (대략 첫 번째 항목 또는 현재 시간대 매칭)
                 idx = 0 
                 if 'relativehumidity_2m' in hourly:
                     humidity = f"{hourly['relativehumidity_2m'][idx]}%"
