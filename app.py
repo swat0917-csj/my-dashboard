@@ -147,7 +147,6 @@ elif menu == "⚡ 1분 실시간 증시 & 뉴스":
 elif menu == "🔍 종목 검색 & 즐겨찾기":
     st.markdown('<div class="main-header">🔍 실시간 종목 선택 및 조회</div>', unsafe_allow_html=True)
     
-    # 국내 주요 종목 사전
     kr_stocks = {
         "삼성전자": "005930.KS",
         "SK하이닉스": "000660.KS",
@@ -171,7 +170,6 @@ elif menu == "🔍 종목 검색 & 즐겨찾기":
         "HD현대중공업": "329180.KS"
     }
 
-    # 미국 주요 종목 사전
     us_stocks = {
         "엔비디아 (NVIDIA)": "NVDA",
         "테슬라 (Tesla)": "TSLA",
@@ -198,12 +196,12 @@ elif menu == "🔍 종목 검색 & 즐겨찾기":
     with tab_kr:
         selected_kr_name = st.selectbox("국내 코스피 주요 종목 선택", list(kr_stocks.keys()))
         target_ticker = kr_stocks[selected_kr_name]
-        st.write(선택한 종목 코드: `{target_ticker}`)
+        st.write(f"선택한 종목 코드: `{target_ticker}`")
 
     with tab_us:
         selected_us_name = st.selectbox("미국 S&P 주요 종목 선택", list(us_stocks.keys()))
         target_ticker = us_stocks[selected_us_name]
-        st.write(선택한 심볼: `{target_ticker}`)
+        st.write(f"선택한 심볼: `{target_ticker}`")
 
     with tab_custom:
         custom_input = st.text_input("종목코드 또는 심볼 직접 입력 (예: 005930, AAPL)", "")
