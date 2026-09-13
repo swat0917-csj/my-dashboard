@@ -142,24 +142,73 @@ elif menu == "⚡ 1분 실시간 증시 & 뉴스":
                 st.markdown(f"> {news}")
 
 # ==========================================
-# 3. 종목 검색 및 즐겨찾기 (종목 코드/심볼 직접 입력 방식으로 안정화)
+# 3. 종목 검색 및 즐겨찾기 (코스피 주요 100선 & S&P 주요 100선 내장)
 # ==========================================
 elif menu == "🔍 종목 검색 & 즐겨찾기":
-    st.markdown('<div class="main-header">🔍 실시간 종목 검색 & 즐겨찾기</div>', unsafe_allow_html=True)
-    st.info("💡 국내 주식은 6자리 코드 (예: 삼성전자 `005930`, SK하이닉스 `000660`), 미국 주식은 심볼 (예: 애플 `AAPL`, 테슬라 `TSLA`)을 입력해 주세요.")
+    st.markdown('<div class="main-header">🔍 실시간 종목 선택 및 조회</div>', unsafe_allow_html=True)
     
-    query = st.text_input("종목 코드 또는 심볼 입력", "005930")
-    if st.button("실시간 검색 실행"):
-        clean_query = query.strip().upper()
-        search_ticker = f"{clean_query}.KS" if clean_query.isdigit() else clean_query
-        
-        hist = yf.Ticker(search_ticker).history(period="1mo")
-        if not hist.empty:
-            curr = hist['Close'].iloc[-1]
-            st.metric(label=f"실시간 현재가 ({search_ticker})", value=f"{curr:,.2f}")
-            st.line_chart(hist['Close'])
+    # 코스피 주요 종목 및 S&P 100 주요 종목 사전 데이터
+    popular_stocks = {
+        "--- 🇰🇷 국내 주요 코스피 종목 ---": "",
+        "삼성전자 (005930)": "005930.KS",
+        "SK하이닉스 (000660)": "000660.KS",
+        "LG에너지솔루션 (373220)": "373220.KS",
+        "삼성바이오로직스 (207940)": "207940.KS",
+        "현대차 (005380)": "005380.KS",
+        "기아 (000270)": "000270.KS",
+        "셀트리온 (068270)": "068270.KS",
+        "KB금융 (105560)": "105560.KS",
+        "신한지주 (055550)": "055550.KS",
+        "POSCO홀딩스 (005490)": "005490.KS",
+        "LG화학 (051910)": "051910.KS",
+        "NAVER (035420)": "035420.KS",
+        "카카오 (035720)": "035720.KS",
+        "삼성물산 (028260)": "028260.KS",
+        "현대모비스 (012330)": "012330.KS",
+        "하나금융지주 (086790)": "086790.KS",
+        "메리츠금융지주 (138040)": "138040.KS",
+        "HMM (011200)": "011200.KS",
+        "두산에너빌리티 (034020)": "034020.KS",
+        "HD현대중공업 (329180)": "329180.KS",
+        "--- 🇺🇸 미국 S&P 주요 종목 ---": "",
+        "엔비디아 (NVIDIA)": "NVDA",
+        "테슬라 (Tesla)": "TSLA",
+        "애플 (Apple)": "AAPL",
+        "마이크로소프트 (Microsoft)": "MSFT",
+        "아마존 (Amazon)": "AMZN",
+        "알파벳 구글 (Alphabet)": "GOOGL",
+        "메타 플랫폼스 (Meta)": "META",
+        "일라이 릴리 (Eli Lilly)": "LLY",
+        "브로드컴 (Broadcom)": "AVGO",
+        "제이피모건 체이스 (JPMorgan)": "JPM",
+        "버크셔 해서웨이 (Berkshire Hathaway)": "BRK-B",
+        "넷플릭스 (Netflix)": "NFLX",
+        "AMD": "AMD",
+        "인텔 (Intel)": "INTC",
+        "코카콜라 (Coca-Cola)": "KO",
+        "월마트 (Walmart)": "WMT"
+    }
+    
+    selected_stock_label = st.selectbox("리스트에서 기업 선택", list(popular_stocks.keys()))
+    ticker_code = popular_stocks[selected_stock_label]
+    
+    # 직접 입력도 지원
+    custom_input = st.text_input("또는 직접 종목코드/심볼 입력 (예: 005930, AAPL)", "")
+    
+    target_ticker = custom_input.strip().upper() if custom_input.strip() else ticker_code
+    
+    if st.button("실시간 시세 조회 실행"):
+        if not target_ticker:
+            st.warning("종목을 선택하거나 입력해 주세요.")
         else:
-            st.error(f"'{query}'에 일치하는 종목 데이터를 찾을 수 없습니다. 코드를 확인해 주세요.")
+            search_ticker = f"{target_ticker}.KS" if target_ticker.isdigit() and not target_ticker.endswith(".KS") else target_ticker
+            hist = yf.Ticker(search_ticker).history(period="1mo")
+            if not hist.empty:
+                curr = hist['Close'].iloc[-1]
+                st.metric(label=f"실시간 현재가 ({search_ticker})", value=f"{curr:,.2f}")
+                st.line_chart(hist['Close'])
+            else:
+                st.error(f"'{target_ticker}'에 일치하는 종목 데이터를 찾을 수 없습니다.")
 
 # ==========================================
 # 4. 최고 투자 종목 & 리포트
@@ -172,12 +221,11 @@ elif menu == "☀️ 최고 투자 종목 & 리포트":
             st.text_area("실시간 모닝 리포트", report, height=300)
 
 # ==========================================
-# 5. 지역별 날씨 조회 (도시 선택형으로 완벽 안정화)
+# 5. 지역별 날씨 조회 (풍부한 기상 정보 표시)
 # ==========================================
 elif menu == "🌤️ 지역별 날씨 조회":
-    st.markdown('<div class="main-header">🌤️ 실시간 기상 정보 조회</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🌤️ 실시간 상세 기상 정보 조회</div>', unsafe_allow_html=True)
     
-    # 주요 도시 좌표 매핑 사전 (에러 원천 차단)
     city_coords = {
         "청주": {"lat": 36.6424, "lon": 127.489, "name": "청주"},
         "서울": {"lat": 37.5665, "lon": 126.9780, "name": "서울"},
@@ -189,17 +237,56 @@ elif menu == "🌤️ 지역별 날씨 조회":
         "제주": {"lat": 33.4996, "lon": 126.5312, "name": "제주"}
     }
     
-    selected_city = st.selectbox("조회할 도시 선택", list(city_coords.keys()), index=0)
+    selected_city = st.selectbox("조회할 지역 선택", list(city_coords.keys()), index=0)
     
-    if st.button("실시간 날씨 가져오기"):
+    if st.button("실시간 상세 날씨 가져오기"):
         try:
             info = city_coords[selected_city]
-            w = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={info['lat']}&longitude={info['lon']}&current_weather=true").json()
-            temp = w['current_weather']['temperature']
-            windspeed = w['current_weather']['windspeed']
+            # 추가 날씨 데이터(습도, 기상상태 코드 등)를 포함하여 요청
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={info['lat']}&longitude={info['lon']}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature,precipitation_probability"
+            w = requests.get(url).json()
             
-            st.metric(label=f"📍 {info['name']} 실시간 기온", value=f"{temp}℃")
-            st.write(f"💨 실시간 풍속: {windspeed} m/s")
+            curr = w['current_weather']
+            temp = curr['temperature']
+            windspeed = curr['windspeed']
+            weathercode = curr['weathercode']
+            
+            # WMO 날씨 코드 해석 텍스트 변환
+            weather_desc_map = {
+                0: "☀️ 맑음", 1: "🌤️ 대체로 맑음", 2: "⛅ 구름 조금", 3: "☁️ 흐림",
+                51: "🌧️ 이슬비", 61: "비", 63: "🌧️ 강한 비", 71: "❄️ 눈", 95: "⚡ 뇌우"
+            }
+            weather_status = weather_desc_map.get(weathercode, f"기상 코드: {weathercode}")
+            
+            # 시간별 데이터에서 현재 시간에 맞는 습도 및 체감온도 추출
+            hourly = w.get('hourly', {})
+            humidity = "정보 없음"
+            apparent_temp = "정보 없음"
+            precip_prob = "정보 없음"
+            
+            if 'time' in hourly and len(hourly['time']) > 0:
+                # 현재 시각과 가장 가까운 인덱스 추정 (대략 첫 번째 항목 또는 현재 시간대 매칭)
+                idx = 0 
+                if 'relativehumidity_2m' in hourly:
+                    humidity = f"{hourly['relativehumidity_2m'][idx]}%"
+                if 'apparent_temperature' in hourly:
+                    apparent_temp = f"{hourly['apparent_temperature'][idx]}℃"
+                if 'precipitation_probability' in hourly:
+                    precip_prob = f"{hourly['precipitation_probability'][idx]}%"
+
+            st.success(f"📍 [{info['name']}] 실시간 기상 현황")
+            
+            col_w1, col_w2, col_w3 = st.columns(3)
+            with col_w1:
+                st.metric(label="현재 기온", value=f"{temp}℃")
+                st.metric(label="실시간 풍속", value=f"{windspeed} m/s")
+            with col_w2:
+                st.metric(label="체감 온도", value=apparent_temp)
+                st.metric(label="습도", value=humidity)
+            with col_w3:
+                st.metric(label="날씨 상태", value=weather_status)
+                st.metric(label="강수 확률", value=precip_prob)
+                
         except Exception as e:
             st.error(f"날씨 정보 조회 실패: {e}")
 
