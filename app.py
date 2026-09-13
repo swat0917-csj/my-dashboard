@@ -5,7 +5,6 @@ import json
 import requests
 import pandas as pd
 import yfinance as yf
-from bs4 import BeautifulSoup
 
 # 기존 stock_info.py 함수들 임포트
 from stock_info import (
@@ -25,7 +24,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# UI 스타일링 (간결화)
+# UI 스타일링
 st.markdown("""
     <style>
     .main-header { font-size: 26px; font-weight: bold; color: #1E3A8A; margin-bottom: 15px; }
@@ -54,38 +53,7 @@ if 'favorites' not in st.session_state:
 if 'cheer_msg' not in st.session_state:
     st.session_state['cheer_msg'] = "오늘도 화이팅! 사랑한다 우리 딸 ❤️"
 
-# ==========================================
-# 💡 한글 주식명을 종목 코드로 변환하는 함수 (네이버 증권 검색 API 연동)
-# ==========================================
-def get_stock_code_from_kr(query):
-    # 이미 숫자 6자리이거나 영문(미국 주식)인 경우 그대로 반환
-    if query.isdigit() or not any(ord(c) >= 0xAC00 and ord(c) <= 0xD7A3 for c in query):
-        return query.upper()
-    
-    try:
-        # 네이버 증권 실시간 검색/자동완성 API 활용
-        url = f"https://ac.finance.naver.com/ac?q={query}&q_enc=euc-kr&st=111&frm=stock"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        res = requests.get(url, headers=headers)
-        res.encoding = 'euc-kr'
-        data = res.json()
-        
-        if "items" in data and len(data["items"]) > 0:
-            for item_group in data["items"]:
-                for item in item_group:
-                    # item[0]이 종목 코드, item[1]이 종목명
-                    if len(item) >= 2 and query.replace(" ", "") in item[1].replace(" ", ""):
-                        return item[0]
-            # 정확히 일치하는 게 없으면 첫 번째 검색 결과의 코드 반환
-            return data["items"][0][0][0]
-    except Exception as e:
-        print(f"종목 코드 변환 실패: {e}")
-    
-    return query
-
-# ==========================================
 # 실시간 학교 급식 연동 함수
-# ==========================================
 def get_live_school_meal(target_date_str):
     try:
         menu_items = get_neis_menu_by_date(target_date_str)
@@ -174,22 +142,24 @@ elif menu == "⚡ 1분 실시간 증시 & 뉴스":
                 st.markdown(f"> {news}")
 
 # ==========================================
-# 3. 종목 검색 및 즐겨찾기
+# 3. 종목 검색 및 즐겨찾기 (종목 코드/심볼 직접 입력 방식으로 안정화)
 # ==========================================
 elif menu == "🔍 종목 검색 & 즐겨찾기":
     st.markdown('<div class="main-header">🔍 실시간 종목 검색 & 즐겨찾기</div>', unsafe_allow_html=True)
-    query = st.text_input("종목명, 코드 또는 심볼 입력 (예: 삼성전자, 005930, AAPL)", "삼성전자")
+    st.info("💡 국내 주식은 6자리 코드 (예: 삼성전자 `005930`, SK하이닉스 `000660`), 미국 주식은 심볼 (예: 애플 `AAPL`, 테슬라 `TSLA`)을 입력해 주세요.")
+    
+    query = st.text_input("종목 코드 또는 심볼 입력", "005930")
     if st.button("실시간 검색 실행"):
-        resolved_query = get_stock_code_from_kr(query)
-        search_ticker = f"{resolved_query}.KS" if resolved_query.isdigit() else resolved_query.upper()
+        clean_query = query.strip().upper()
+        search_ticker = f"{clean_query}.KS" if clean_query.isdigit() else clean_query
         
         hist = yf.Ticker(search_ticker).history(period="1mo")
         if not hist.empty:
             curr = hist['Close'].iloc[-1]
-            st.metric(label=f"실시간 현재가 ({query} / {search_ticker})", value=f"{curr:,.2f}")
+            st.metric(label=f"실시간 현재가 ({search_ticker})", value=f"{curr:,.2f}")
             st.line_chart(hist['Close'])
         else:
-            st.error(f"'{query}'에 일치하는 종목 데이터를 찾을 수 없습니다.")
+            st.error(f"'{query}'에 일치하는 종목 데이터를 찾을 수 없습니다. 코드를 확인해 주세요.")
 
 # ==========================================
 # 4. 최고 투자 종목 & 리포트
@@ -202,28 +172,36 @@ elif menu == "☀️ 최고 투자 종목 & 리포트":
             st.text_area("실시간 모닝 리포트", report, height=300)
 
 # ==========================================
-# 5. 지역별 날씨 조회 (오타 수정 완료)
+# 5. 지역별 날씨 조회 (도시 선택형으로 완벽 안정화)
 # ==========================================
 elif menu == "🌤️ 지역별 날씨 조회":
     st.markdown('<div class="main-header">🌤️ 실시간 기상 정보 조회</div>', unsafe_allow_html=True)
-    region = st.text_input("도시 이름 입력 (예: 청주, 서울, 부산)", "청주")
+    
+    # 주요 도시 좌표 매핑 사전 (에러 원천 차단)
+    city_coords = {
+        "청주": {"lat": 36.6424, "lon": 127.489, "name": "청주"},
+        "서울": {"lat": 37.5665, "lon": 126.9780, "name": "서울"},
+        "부산": {"lat": 35.1796, "lon": 129.0756, "name": "부산"},
+        "대전": {"lat": 36.3504, "lon": 127.3845, "name": "대전"},
+        "인천": {"lat": 37.4563, "lon": 126.7052, "name": "인천"},
+        "대구": {"lat": 35.8722, "lon": 128.6014, "name": "대구"},
+        "광주": {"lat": 35.1595, "lon": 126.8526, "name": "광주"},
+        "제주": {"lat": 33.4996, "lon": 126.5312, "name": "제주"}
+    }
+    
+    selected_city = st.selectbox("조회할 도시 선택", list(city_coords.keys()), index=0)
+    
     if st.button("실시간 날씨 가져오기"):
         try:
-            geo = requests.get("https://geocoding-api.open-meteo.com/v1/search", params={"name": region, "count": 1, "language": "ko"}).json()
+            info = city_coords[selected_city]
+            w = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={info['lat']}&longitude={info['lon']}&current_weather=true").json()
+            temp = w['current_weather']['temperature']
+            windspeed = w['current_weather']['windspeed']
             
-            if "results" in geo and len(geo["results"]) > 0:
-                lat = geo['results'][0]['latitude']
-                lon = geo['results'][0]['longitude']
-                place_name = geo['results'][0].get('name', region)
-                admin1 = geo['results'][0].get('admin1', '')
-                
-                w = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()
-                temp = w['current_weather']['temperature']
-                st.metric(label=f"📍 {place_name} ({admin1}) 실시간 기온", value=f"{temp}℃")
-            else:
-                st.error("해당 지역 정보를 찾을 수 없습니다. 올바른 도시 이름을 입력해 주세요.")
+            st.metric(label=f"📍 {info['name']} 실시간 기온", value=f"{temp}℃")
+            st.write(f"💨 실시간 풍속: {windspeed} m/s")
         except Exception as e:
-            st.error(f"조회 실패: {e}")
+            st.error(f"날씨 정보 조회 실패: {e}")
 
 # ==========================================
 # 6. 학교 급식 & 실시간 조회
