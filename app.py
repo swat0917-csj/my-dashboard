@@ -86,7 +86,7 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
             except Exception as e:
                 st.warning(f"데이터 로딩 중... ({e})")
         
-with col2:
+    with col2:
         st.subheader("🥇 실시간 금 시세 (국내 원화 환산)")
         with st.container(border=True):
             try:
@@ -133,7 +133,6 @@ with col2:
                     </div>
                 """, unsafe_allow_html=True)
                                 
-                
     st.markdown("")
     col3, col4 = st.columns(2)
     with col3:
@@ -224,7 +223,6 @@ elif menu == "📈 국내·미국 증시 탑 50 현황판":
     st.markdown('<div class="main-header">📈 국내 · 미국 증시 Top 50 촘촘 현황판</div>', unsafe_allow_html=True)
     st.write("국내 코스피/코스닥 대형주 및 미국 주요 우량주 상위 50개 종목의 실시간 시세를 한눈에 비교합니다.")
 
-    # 국내 탑 50 종목 리스트 (이름: 티커)
     KR_TOP_50 = {
         "삼성전자": "005930.KS", "SK하이닉스": "000660.KS", "LG에너지솔루션": "373220.KS",
         "삼성바이오로직스": "207940.KS", "현대차": "005380.KS", "기아": "000270.KS",
@@ -238,14 +236,13 @@ elif menu == "📈 국내·미국 증시 탑 50 현황판":
         "한화오션": "042660.KS", "KT": "030200.KS", "LG": "003550.KS",
         "삼성화재": "000810.KS", "HD한국조선해양": "009540.KS", "SK": "034730.KS",
         "우리금융지주": "316140.KS", "SK아이이테크놀로지": "361610.KS", "포스코퓨처엠": "003670.KS",
-        "한화에어로스페이스": "012450.KS", "Y한화솔루션": "009830.KS", "금호석유": "011780.KS",
+        "한화에어로스페이스": "012450.KS", "한화솔루션": "009830.KS", "금호석유": "011780.KS",
         "현대모비스": "012330.KS", "DB손해보험": "005830.KS", "CJ제일제당": "097950.KS",
-        "KT&G": "033780.KS", "E1": "017940.KS", "LS": "006260.KS",
+        "E1": "017940.KS", "LS": "006260.KS",
         "오리온": "271560.KS", "LG이노텍": "011070.KS", "한미사이언스": "008930.KS",
         "S-Oil": "010950.KS", "SK바이오팜": "326030.KS"
     }
 
-    # 미국 탑 50 종목 리스트 (이름: 티커)
     US_TOP_50 = {
         "마이크로소프트 (MSFT)": "MSFT", "애플 (AAPL)": "AAPL", "엔비디아 (NVDA)": "NVDA",
         "알파벳 구글 (GOOGL)": "GOOGL", "아마존 (AMZN)": "AMZN", "메타 (META)": "META",
@@ -256,10 +253,10 @@ elif menu == "📈 국내·미국 증시 탑 50 현황판":
         "존슨앤드존슨 (JNJ)": "JNJ", "뱅크오브아메리카 (BAC)": "BAC", "AMD": "AMD",
         "코스코 (COST)": "COST", "세일즈포스 (CRM)": "CRM", "애브비 (ABBV)": "ABBV",
         "어도비 (ADBE)": "ADBE", "월마트 (WMT)": "WMT", "쉐브론 (CVX)": "CVX",
-        "코카콜라 (KO)": "KO", "펩시코 (PEP)": "PEP", "아머존-대체": "AMAT",
+        "코카콜라 (KO)": "KO", "펩시코 (PEP)": "PEP", "어플라이드 머티어리얼즈": "AMAT",
         "퀄컴 (QCOM)": "QCOM", "IBM": "IBM", "인텔 (INTC)": "INTC",
         "텍사스 인스트루먼트 (TXN)": "TXN", "시스코 (CSCO)": "CSCO", "나이키 (NKE)": "NKE",
-        "맥도날드 (MCD)": "MCD", "디즈니 (DIS)": "DIS", "월트디즈니": "DIS",
+        "맥도날드 (MCD)": "MCD", "디즈니 (DIS)": "DIS",
         "화이자 (PFE)": "PFE", "보잉 (BA)": "BA", "버라이즌 (VZ)": "VZ",
         "AT&T (T)": "T", "포드 (F)": "F", "제너럴 모터스 (GM)": "GM",
         "우버 (UBER)": "UBER", "팔란티어 (PLTR)": "PLTR", "코인베이스 (COIN)": "COIN",
@@ -391,7 +388,7 @@ elif menu == "☀️ 최고 투자 종목 & 리포트":
             st.text_area("실시간 모닝 리포트", report, height=300)
 
 # ==========================================
-# 5. 지역별 날씨 조회 (대한민국 지도 그래픽 연동)
+# 6. 지역별 날씨 조회 (대한민국 지도 그래픽 연동)
 # ==========================================
 elif menu == "🌤️ 지역별 날씨 조회":
     st.markdown('<div class="main-header">🌤️ 실시간 상세 기상 정보 및 지도 조회</div>', unsafe_allow_html=True)
@@ -456,7 +453,6 @@ elif menu == "🌤️ 지역별 날씨 조회":
             st.markdown("")
             st.markdown(f"### 🗺️ 대한민국 지도 내 [{info['name']}] 위치 그래픽")
             
-            # 스트림릿 내장 st.map을 활용한 지도 그래픽 표시 (위도/경도 데이터프레임 전달)
             map_data = pd.DataFrame({
                 'lat': [info['lat']],
                 'lon': [info['lon']]
@@ -491,11 +487,9 @@ elif menu == "💌 자녀 응원 메시지 전송":
     msg = st.text_area("메시지 입력", st.session_state['cheer_msg'])
     
     if st.button("🚀 자녀 카카오톡으로 실시간 전송"):
-        # 👉 여기에 발급받으신 본인의 카카오 REST API 키와 리프레시 토큰을 직접 넣어주세요.
         child_token = "여기에_자녀와의_카카오_리프레시_토큰_입력"
         api_key = "여기에_본인의_KAKAO_REST_API_KEY_입력"
 
-        # 만약 위 칸을 비워두었다면 기존처럼 환경변수/secrets에서도 읽어옵니다
         if not child_token or child_token == "여기에_자녀와의_카카오_리프레시_토큰_입력":
             child_token = os.environ.get("KAKAO_REFRESH_TOKEN_CHILD")
             if not child_token and hasattr(st, "secrets") and "KAKAO_REFRESH_TOKEN_CHILD" in st.secrets:
@@ -534,7 +528,7 @@ elif menu == "💌 자녀 응원 메시지 전송":
 # 9. 카카오톡 수동 전송 (증시/급식)
 # ==========================================
 elif menu == "📢 카카오톡 수동 전송 (증시/급식)":
-    st.markdown('<div class="main-header">📢 카카오톡 수동 전송 제어판</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">📢 카카오톡 수동 전송 제어판</div>', unsafe_allow_html=Python)
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
         if st.button("주식 리포트 카톡으로 보내기", type="primary", use_container_width=True):
