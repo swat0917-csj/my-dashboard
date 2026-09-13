@@ -55,6 +55,29 @@ if 'cheer_msg' not in st.session_state:
     st.session_state['cheer_msg'] = "오늘도 화이팅! 사랑한다 우리 딸 ❤️"
 
 # ==========================================
+# 💡 한글 주식명을 종목 코드로 변환하는 함수 (네이버 금융 자동완성 활용)
+# ==========================================
+def get_stock_code_from_kr(query):
+    # 이미 숫자 6자리이거나 영문(미국 주식)인 경우 그대로 반환
+    if query.isdigit() or not any(ord(c) >= 0xAC00 and ord(c) <= 0xD7A3 for c in query):
+        return query.upper()
+    
+    try:
+        url = f"https://ac.finance.naver.com/ac?q={query}&q_enc=euc-kr&st=111&frm=stock"
+        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        res.encoding = 'euc-kr'
+        data = res.json()
+        if "items" in data and len(data["items"]) > 0:
+            # 첫 번째 검색 결과의 종목 코드 반환
+            item = data["items"][0]
+            code = item[0]  # 예: "005930"
+            return code
+    except Exception as e:
+        print(f"종목 코드 변환 실패: {e}")
+    
+    return query
+
+# ==========================================
 # 실시간 학교 급식 연동 함수
 # ==========================================
 def get_live_school_meal(target_date_str):
@@ -145,20 +168,22 @@ elif menu == "⚡ 1분 실시간 증시 & 뉴스":
                 st.markdown(f"> {news}")
 
 # ==========================================
-# 3. 종목 검색 및 즐겨찾기
+# 3. 종목 검색 및 즐겨찾기 (한글 검색 지원 추가)
 # ==========================================
 elif menu == "🔍 종목 검색 & 즐겨찾기":
     st.markdown('<div class="main-header">🔍 실시간 종목 검색 & 즐겨찾기</div>', unsafe_allow_html=True)
-    query = st.text_input("종목 코드 또는 심볼 입력 (예: 005930, AAPL)", "005930")
+    query = st.text_input("종목명, 코드 또는 심볼 입력 (예: 삼성전자, 005930, AAPL)", "삼성전자")
     if st.button("실시간 검색 실행"):
-        search_ticker = f"{query}.KS" if query.isdigit() else query.upper()
+        resolved_query = get_stock_code_from_kr(query)
+        search_ticker = f"{resolved_query}.KS" if resolved_query.isdigit() else resolved_query.upper()
+        
         hist = yf.Ticker(search_ticker).history(period="1mo")
         if not hist.empty:
             curr = hist['Close'].iloc[-1]
-            st.metric(label=f"실시간 현재가 ({search_ticker})", value=f"{curr:,.2f}")
+            st.metric(label=f"실시간 현재가 ({query} / {search_ticker})", value=f"{curr:,.2f}")
             st.line_chart(hist['Close'])
         else:
-            st.error("일치하는 종목 데이터를 찾을 수 없습니다.")
+            st.error(f"'{query}'에 일치하는 종목 데이터를 찾을 수 없습니다.")
 
 # ==========================================
 # 4. 최고 투자 종목 & 리포트
@@ -171,21 +196,29 @@ elif menu == "☀️ 최고 투자 종목 & 리포트":
             st.text_area("실시간 모닝 리포트", report, height=300)
 
 # ==========================================
-# 5. 지역별 날씨 조회
+# 5. 지역별 날씨 조회 (한글 지역명 검색 강화)
 # ==========================================
 elif menu == "🌤️ 지역별 날씨 조회":
     st.markdown('<div class="main-header">🌤️ 실시간 기상 정보 조회</div>', unsafe_allow_html=True)
-    region = st.text_input("도시 이름", "청주")
+    region = st.text_input("도시 이름 입력 (예: 청주, 서울, 부산)", "청주")
     if st.button("실시간 날씨 가져오기"):
         try:
-            geo = requests.get(f"https://geocoding-api.open-meteo.com/v1/search?name={region}&count=1&language=ko").json()
-            if "results" in geo:
-                lat, lon = geo['results'][0]['latitude'], geo['results'][0]['longitude']
+            # language=ko 파라미터를 추가하여 한글 지명 검색 정확도 향상
+            geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={urllib_quote_safe(region)}&count=1&language=ko"
+            # urllib 직접 임포트 대신 requests 파라미터 활용
+            geo = requests.get("https://geocoding-api.open-meteo.com/v1/search", params={"name": region, "count": 1, "language": "ko"}).json()
+            
+            if "results" in geo and len(geo["results"]) > 0:
+                lat = geo['results'][0]['latitude']
+                lon = geo['results'][0]['longitude']
+                place_name = geo['results'][0].get('name', region)
+                admin1 = geo['results'][0].get('admin1', '')
+                
                 w = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()
                 temp = w['current_weather']['temperature']
-                st.metric(label=f"📍 {region} 실시간 기온", value=f"{temp}℃")
+                st.metric(label=f"📍 {place_name} ({admin1}) 실시간 기온", value=f"{temp}℃")
             else:
-                st.error("해당 지역 정보를 찾을 수 없습니다.")
+                st.error("해당 지역 정보를 찾을 수 없습니다. 올바른 도시 이름을 입력해 주세요.")
         except Exception as e:
             st.error(f"조회 실패: {e}")
 
