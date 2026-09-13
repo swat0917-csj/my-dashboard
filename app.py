@@ -55,7 +55,7 @@ if 'cheer_msg' not in st.session_state:
     st.session_state['cheer_msg'] = "오늘도 화이팅! 사랑한다 우리 딸 ❤️"
 
 # ==========================================
-# 💡 한글 주식명을 종목 코드로 변환하는 함수 (네이버 금융 자동완성 활용)
+# 💡 한글 주식명을 종목 코드로 변환하는 함수 (네이버 증권 검색 API 연동)
 # ==========================================
 def get_stock_code_from_kr(query):
     # 이미 숫자 6자리이거나 영문(미국 주식)인 경우 그대로 반환
@@ -63,15 +63,21 @@ def get_stock_code_from_kr(query):
         return query.upper()
     
     try:
+        # 네이버 증권 실시간 검색/자동완성 API 활용
         url = f"https://ac.finance.naver.com/ac?q={query}&q_enc=euc-kr&st=111&frm=stock"
-        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.get(url, headers=headers)
         res.encoding = 'euc-kr'
         data = res.json()
+        
         if "items" in data and len(data["items"]) > 0:
-            # 첫 번째 검색 결과의 종목 코드 반환
-            item = data["items"][0]
-            code = item[0]  # 예: "005930"
-            return code
+            for item_group in data["items"]:
+                for item in item_group:
+                    # item[0]이 종목 코드, item[1]이 종목명
+                    if len(item) >= 2 and query.replace(" ", "") in item[1].replace(" ", ""):
+                        return item[0]
+            # 정확히 일치하는 게 없으면 첫 번째 검색 결과의 코드 반환
+            return data["items"][0][0][0]
     except Exception as e:
         print(f"종목 코드 변환 실패: {e}")
     
@@ -168,7 +174,7 @@ elif menu == "⚡ 1분 실시간 증시 & 뉴스":
                 st.markdown(f"> {news}")
 
 # ==========================================
-# 3. 종목 검색 및 즐겨찾기 (한글 검색 지원 추가)
+# 3. 종목 검색 및 즐겨찾기
 # ==========================================
 elif menu == "🔍 종목 검색 & 즐겨찾기":
     st.markdown('<div class="main-header">🔍 실시간 종목 검색 & 즐겨찾기</div>', unsafe_allow_html=True)
@@ -196,16 +202,13 @@ elif menu == "☀️ 최고 투자 종목 & 리포트":
             st.text_area("실시간 모닝 리포트", report, height=300)
 
 # ==========================================
-# 5. 지역별 날씨 조회 (한글 지역명 검색 강화)
+# 5. 지역별 날씨 조회 (오타 수정 완료)
 # ==========================================
 elif menu == "🌤️ 지역별 날씨 조회":
     st.markdown('<div class="main-header">🌤️ 실시간 기상 정보 조회</div>', unsafe_allow_html=True)
     region = st.text_input("도시 이름 입력 (예: 청주, 서울, 부산)", "청주")
     if st.button("실시간 날씨 가져오기"):
         try:
-            # language=ko 파라미터를 추가하여 한글 지명 검색 정확도 향상
-            geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={urllib_quote_safe(region)}&count=1&language=ko"
-            # urllib 직접 임포트 대신 requests 파라미터 활용
             geo = requests.get("https://geocoding-api.open-meteo.com/v1/search", params={"name": region, "count": 1, "language": "ko"}).json()
             
             if "results" in geo and len(geo["results"]) > 0:
