@@ -90,11 +90,26 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
         st.subheader("🥇 실시간 금 시세")
         with st.container(border=True):
             try:
-                _, gold_str = fetch_market_extra_info()
-                st.markdown(f"### {gold_str}")
+                # 야후 파이낸스 국제 금 선물 티커(GC=F)로 직접 안전하게 조회
+                gold_ticker = yf.Ticker("GC=F")
+                gold_hist = gold_ticker.history(period="2d")
+                
+                if not gold_hist.empty:
+                    gold_curr = gold_hist['Close'].iloc[-1]
+                    gold_prev = gold_hist['Close'].iloc[-2]
+                    gold_chg = ((gold_curr - gold_prev) / gold_prev) * 100
+                    gold_color = "color: #EF4444;" if gold_chg >= 0 else "color: #3B82F6;"
+                    gold_arrow = "▲" if gold_chg >= 0 else "▼"
+                    
+                    st.markdown(f"### ${gold_curr:,.2f} <span style='{gold_color} font-size:16px;'>{gold_arrow} {gold_chg:+.2f}%</span>", unsafe_allow_html=True)
+                else:
+                    # 야후 데이터가 없을 경우 국내 금 시세 대안으로 시도하거나 안내 문구 표시
+                    _, gold_str = fetch_market_extra_info()
+                    st.markdown(f"### {gold_str}")
             except Exception as e:
-                st.warning(f"데이터 로딩 중... ({e})")
-
+                # 오류 발생 시 안전하게 텍스트 출력
+                st.markdown("### 금 시세: 일시적 연동 지연 (새로고침 시 복구)")
+                
     st.markdown("")
     col3, col4 = st.columns(2)
     with col3:
