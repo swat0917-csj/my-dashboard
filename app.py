@@ -132,7 +132,7 @@ with col2:
                         <b>1g 당:</b> 129,333원 <span style='color: #EF4444; font-size: 14px;'>▲ 0.50%</span>
                     </div>
                 """, unsafe_allow_html=True)
-                
+                                
                 
     st.markdown("")
     col3, col4 = st.columns(2)
