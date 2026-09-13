@@ -445,32 +445,45 @@ elif menu == "🍱 학교 급식 & 실시간 조회":
                 st.warning("등록된 급식 정보가 없거나 주말/휴일입니다.")
 
 # ==========================================
-# 8. 자녀 응원 메시지 전송
+# 8. 자녀 응원 메시지 전송 (st.secrets 지원 추가)
 # ==========================================
 elif menu == "💌 자녀 응원 메시지 전송":
     st.markdown('<div class="main-header">💌 자녀 응원 메시지 설정 및 전송</div>', unsafe_allow_html=True)
     msg = st.text_area("메시지 입력", st.session_state['cheer_msg'])
+    
     if st.button("🚀 자녀 카카오톡으로 실시간 전송"):
+        # 환경변수 또는 st.secrets에서 안전하게 토큰 가져오기
         child_token = os.environ.get("KAKAO_REFRESH_TOKEN_CHILD")
+        if not child_token and hasattr(st, "secrets") and "KAKAO_REFRESH_TOKEN_CHILD" in st.secrets:
+            child_token = st.secrets["KAKAO_REFRESH_TOKEN_CHILD"]
+            
         api_key = os.environ.get("KAKAO_REST_API_KEY")
+        if not api_key and hasattr(st, "secrets") and "KAKAO_REST_API_KEY" in st.secrets:
+            api_key = st.secrets["KAKAO_REST_API_KEY"]
+
         if child_token and api_key:
-            token_res = requests.post("https://kauth.kakao.com/oauth/token", data={
-                "grant_type": "refresh_token", "client_id": api_key, "refresh_token": child_token
-            }).json()
-            acc_token = token_res.get("access_token")
-            if acc_token:
-                payload = {
-                    "object_type": "text",
-                    "text": f"💌 [아빠의 실시간 응원]\n\n{msg}",
-                    "link": {"web_url": "https://naver.com", "mobile_web_url": "https://naver.com"}
-                }
-                requests.post("https://kapi.kakao.com/v2/api/talk/memo/default/send",
-                    headers={"Authorization": f"Bearer {acc_token}", "Content-Type": "application/x-www-form-urlencoded"},
-                    data={"template_object": json.dumps(payload, ensure_ascii=False)}
-                )
-                st.success("실시간 응원 카카오톡 전송 완료!")
+            try:
+                token_res = requests.post("https://kauth.kakao.com/oauth/token", data={
+                    "grant_type": "refresh_token", "client_id": api_key, "refresh_token": child_token
+                }).json()
+                acc_token = token_res.get("access_token")
+                if acc_token:
+                    payload = {
+                        "object_type": "text",
+                        "text": f"💌 [아빠의 실시간 응원]\n\n{msg}",
+                        "link": {"web_url": "https://naver.com", "mobile_web_url": "https://naver.com"}
+                    }
+                    requests.post("https://kapi.kakao.com/v2/api/talk/memo/default/send",
+                        headers={"Authorization": f"Bearer {acc_token}", "Content-Type": "application/x-www-form-urlencoded"},
+                        data={"template_object": json.dumps(payload, ensure_ascii=False)}
+                    )
+                    st.success("실시간 응원 카카오톡 전송 완료!")
+                else:
+                    st.error(f"카카오 토큰 갱신 실패: {token_res}")
+            except Exception as e:
+                st.error(f"전송 중 오류 발생: {e}")
         else:
-            st.error("카카오 토큰이 설정되지 않았습니다.")
+            st.error("카카오 토큰이 설정되지 않았습니다. 환경 변수나 .streamlit/secrets.toml에 KAKAO_REFRESH_TOKEN_CHILD와 KAKAO_REST_API_KEY를 설정해 주세요.")
 
 # ==========================================
 # 9. 카카오톡 수동 전송 (증시/급식)
