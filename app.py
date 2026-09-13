@@ -352,35 +352,80 @@ elif menu == "☀️ 최고 투자 종목 & 리포트":
             st.text_area("실시간 모닝 리포트", report, height=300)
 
 # ==========================================
-# 6. 지역별 날씨 조회
+# 5. 지역별 날씨 조회 (대한민국 지도 그래픽 연동)
 # ==========================================
 elif menu == "🌤️ 지역별 날씨 조회":
-    st.markdown('<div class="main-header">🌤️ TV 기상캐스터 실시간 날씨 지도</div>', unsafe_allow_html=True)
-    m = folium.Map(location=[36.5, 127.5], zoom_start=7, tiles="cartodbpositron")
-    cities = {
-        "서울": {"lat": 37.5665, "lon": 126.9780}, "청주": {"lat": 36.6424, "lon": 127.4890},
-        "부산": {"lat": 35.1796, "lon": 129.0756}, "대구": {"lat": 35.8722, "lon": 128.6014},
-        "광주": {"lat": 35.1595, "lon": 126.8526}, "제주": {"lat": 33.4996, "lon": 126.5312}
+    st.markdown('<div class="main-header">🌤️ 실시간 상세 기상 정보 및 지도 조회</div>', unsafe_allow_html=True)
+    
+    city_coords = {
+        "청주": {"lat": 36.6424, "lon": 127.489, "name": "청주"},
+        "서울": {"lat": 37.5665, "lon": 126.9780, "name": "서울"},
+        "부산": {"lat": 35.1796, "lon": 129.0756, "name": "부산"},
+        "대전": {"lat": 36.3504, "lon": 127.3845, "name": "대전"},
+        "인천": {"lat": 37.4563, "lon": 126.7052, "name": "인천"},
+        "대구": {"lat": 35.8722, "lon": 128.6014, "name": "대구"},
+        "광주": {"lat": 35.1595, "lon": 126.8526, "name": "광주"},
+        "제주": {"lat": 33.4996, "lon": 126.5312, "name": "제주"}
     }
-
-    for city_name, coord in cities.items():
+    
+    selected_city = st.selectbox("조회할 지역 선택", list(city_coords.keys()), index=0)
+    
+    if st.button("실시간 상세 날씨 및 지도 보기"):
         try:
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={coord['lat']}&longitude={coord['lon']}&current_weather=true"
-            res = requests.get(url).json()
-            temp = res['current_weather']['temperature']
-            w_code = res['current_weather']['weathercode']
-            icon_symbol = "☀️" if w_code == 0 else ("⛅" if w_code <= 2 else "☁️")
-            if w_code >= 51: icon_symbol = "🌧️"
+            info = city_coords[selected_city]
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={info['lat']}&longitude={info['lon']}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature,precipitation_probability"
+            w = requests.get(url).json()
             
-            html_tooltip = f"""
-            <div style="background: white; border: 2px solid #1E3A8A; border-radius: 20px; padding: 5px 10px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
-                <span>{icon_symbol}</span> <b>{city_name}</b> <span style="color: #D32F2F;">{temp}℃</span>
-            </div>
-            """
-            folium.Marker([coord['lat'], coord['lon']], icon=folium.DivIcon(html=html_tooltip)).add_to(m)
-        except:
-            pass
-    st_folium(m, width="100%", height=550)
+            curr = w['current_weather']
+            temp = curr['temperature']
+            windspeed = curr['windspeed']
+            weathercode = curr['weathercode']
+            
+            weather_desc_map = {
+                0: "☀️ 맑음", 1: "🌤️ 대체로 맑음", 2: "⛅ 구름 조금", 3: "☁️ 흐림",
+                51: "🌧️ 이슬비", 61: "비", 63: "🌧️ 강한 비", 71: "❄️ 눈", 95: "⚡ 뇌우"
+            }
+            weather_status = weather_desc_map.get(weathercode, f"기상 코드: {weathercode}")
+            
+            hourly = w.get('hourly', {})
+            humidity = "정보 없음"
+            apparent_temp = "정보 없음"
+            precip_prob = "정보 없음"
+            
+            if 'time' in hourly and len(hourly['time']) > 0:
+                idx = 0 
+                if 'relativehumidity_2m' in hourly:
+                    humidity = f"{hourly['relativehumidity_2m'][idx]}%"
+                if 'apparent_temperature' in hourly:
+                    apparent_temp = f"{hourly['apparent_temperature'][idx]}℃"
+                if 'precipitation_probability' in hourly:
+                    precip_prob = f"{hourly['precipitation_probability'][idx]}%"
+
+            st.success(f"📍 [{info['name']}] 실시간 기상 현황")
+            
+            col_w1, col_w2, col_w3 = st.columns(3)
+            with col_w1:
+                st.metric(label="현재 기온", value=f"{temp}℃")
+                st.metric(label="실시간 풍속", value=f"{windspeed} m/s")
+            with col_w2:
+                st.metric(label="체감 온도", value=apparent_temp)
+                st.metric(label="습도", value=humidity)
+            with col_w3:
+                st.metric(label="날씨 상태", value=weather_status)
+                st.metric(label="강수 확률", value=precip_prob)
+
+            st.markdown("")
+            st.markdown(f"### 🗺️ 대한민국 지도 내 [{info['name']}] 위치 그래픽")
+            
+            # 스트림릿 내장 st.map을 활용한 지도 그래픽 표시 (위도/경도 데이터프레임 전달)
+            map_data = pd.DataFrame({
+                'lat': [info['lat']],
+                'lon': [info['lon']]
+            })
+            st.map(map_data, zoom=7, use_container_width=True)
+                
+        except Exception as e:
+            st.error(f"날씨 정보 조회 실패: {e}")
 
 # ==========================================
 # 7. 학교 급식 & 실시간 조회
