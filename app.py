@@ -87,25 +87,44 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
                 st.warning(f"데이터 로딩 중... ({e})")
         
     with col2:
-        st.subheader("🥇 실시간 금 시세 (GLD 지표)")
+        st.subheader("🥇 실시간 금 시세 (국내 원화 환산)")
         with st.container(border=True):
             try:
-                # 금 선물(GC=F) 대신 안정적인 금 현물 기반 ETF(GLD)로 조회
-                gold_ticker = yf.Ticker("GLD")
-                gold_hist = gold_ticker.history(period="2d")
+                # 1. 국제 금 가격(GC=F)과 원/달러 환율(USDKRW=X)을 동시에 가져옴
+                gold_t = yf.Ticker("GC=F")
+                rate_t = yf.Ticker("USDKRW=X")
                 
-                if not gold_hist.empty:
-                    gold_curr = gold_hist['Close'].iloc[-1]
-                    gold_prev = gold_hist['Close'].iloc[-2]
-                    gold_chg = ((gold_curr - gold_prev) / gold_prev) * 100
-                    gold_color = "color: #EF4444;" if gold_chg >= 0 else "color: #3B82F6;"
-                    gold_arrow = "▲" if gold_chg >= 0 else "▼"
+                gold_hist = gold_t.history(period="2d")
+                rate_hist = rate_t.history(period="1d")
+                
+                if not gold_hist.empty and not rate_hist.empty:
+                    # 트로이오스당 달러 가격
+                    oz_price = gold_hist['Close'].iloc[-1]
+                    oz_prev = gold_hist['Close'].iloc[-2]
+                    oz_chg = ((oz_price - oz_prev) / oz_prev) * 100
                     
-                    st.markdown(f"### ${gold_curr:,.2f} <span style='{gold_color} font-size:16px;'>{gold_arrow} {gold_chg:+.2f}%</span>", unsafe_allow_html=True)
+                    # 실시간 원/달러 환율
+                    krw_rate = rate_hist['Close'].iloc[-1]
+                    
+                    # 트로이오스(약 31.1035g)를 1g 가격(원화)으로 환산
+                    g_price_krw = (oz_price * krw_rate) / 31.1035
+                    # 1돈(3.75g) 가격(원화) 환산
+                    don_price_krw = g_price_krw * 3.75
+                    
+                    gold_color = "color: #EF4444;" if oz_chg >= 0 else "color: #3B82F6;"
+                    gold_arrow = "▲" if oz_chg >= 0 else "▼"
+                    
+                    st.markdown(f"""
+                        <div style='font-size: 15px;'>
+                            <b>1돈 (3.75g):</b> <span style='font-size: 18px; font-weight: bold;'>{don_price_krw:,.0f}원</span><br>
+                            <b>1g 당:</b> {g_price_krw:,.0f원} 
+                            <span style='{gold_color} font-size: 14px; margin-left: 8px;'>{gold_arrow} {oz_chg:+.2f}%</span>
+                        </div>
+                    """, unsafe_allow_html=True)
                 else:
-                    st.markdown("### 금 시세 데이터 준비 중")
+                    st.markdown("### 금 시세 환산 대기 중")
             except Exception as e:
-                st.markdown("### 금 시세: 실시간 연동 원활함 (새로고침)")
+                st.markdown(f"### 금 시세 연동 중 오류 발생")
                 
                 
     st.markdown("")
