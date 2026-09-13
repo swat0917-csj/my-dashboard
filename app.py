@@ -445,21 +445,27 @@ elif menu == "🍱 학교 급식 & 실시간 조회":
                 st.warning("등록된 급식 정보가 없거나 주말/휴일입니다.")
 
 # ==========================================
-# 8. 자녀 응원 메시지 전송 (st.secrets 지원 추가)
+# 8. 자녀 응원 메시지 전송 (직접 입력 버전)
 # ==========================================
 elif menu == "💌 자녀 응원 메시지 전송":
     st.markdown('<div class="main-header">💌 자녀 응원 메시지 설정 및 전송</div>', unsafe_allow_html=True)
     msg = st.text_area("메시지 입력", st.session_state['cheer_msg'])
     
     if st.button("🚀 자녀 카카오톡으로 실시간 전송"):
-        # 환경변수 또는 st.secrets에서 안전하게 토큰 가져오기
-        child_token = os.environ.get("KAKAO_REFRESH_TOKEN_CHILD")
-        if not child_token and hasattr(st, "secrets") and "KAKAO_REFRESH_TOKEN_CHILD" in st.secrets:
-            child_token = st.secrets["KAKAO_REFRESH_TOKEN_CHILD"]
-            
-        api_key = os.environ.get("KAKAO_REST_API_KEY")
-        if not api_key and hasattr(st, "secrets") and "KAKAO_REST_API_KEY" in st.secrets:
-            api_key = st.secrets["KAKAO_REST_API_KEY"]
+        # 👉 여기에 발급받으신 본인의 카카오 REST API 키와 리프레시 토큰을 직접 넣어주세요.
+        child_token = "여기에_자녀와의_카카오_리프레시_토큰_입력"
+        api_key = "여기에_본인의_KAKAO_REST_API_KEY_입력"
+
+        # 만약 위 칸을 비워두었다면 기존처럼 환경변수/secrets에서도 읽어옵니다
+        if not child_token or child_token == "여기에_자녀와의_카카오_리프레시_토큰_입력":
+            child_token = os.environ.get("KAKAO_REFRESH_TOKEN_CHILD")
+            if not child_token and hasattr(st, "secrets") and "KAKAO_REFRESH_TOKEN_CHILD" in st.secrets:
+                child_token = st.secrets["KAKAO_REFRESH_TOKEN_CHILD"]
+                
+        if not api_key or api_key == "여기에_본인의_KAKAO_REST_API_KEY_입력":
+            api_key = os.environ.get("KAKAO_REST_API_KEY")
+            if not api_key and hasattr(st, "secrets") and "KAKAO_REST_API_KEY" in st.secrets:
+                api_key = st.secrets["KAKAO_REST_API_KEY"]
 
         if child_token and api_key:
             try:
@@ -483,7 +489,7 @@ elif menu == "💌 자녀 응원 메시지 전송":
             except Exception as e:
                 st.error(f"전송 중 오류 발생: {e}")
         else:
-            st.error("카카오 토큰이 설정되지 않았습니다. 환경 변수나 .streamlit/secrets.toml에 KAKAO_REFRESH_TOKEN_CHILD와 KAKAO_REST_API_KEY를 설정해 주세요.")
+            st.error("카카오 토큰이 설정되지 않았습니다. 코드 내에 토큰을 입력해 주세요.")
 
 # ==========================================
 # 9. 카카오톡 수동 전송 (증시/급식)
