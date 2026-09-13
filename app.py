@@ -233,25 +233,25 @@ elif menu == "☀️ 최고 투자 종목 & 리포트":
             st.text_area("실시간 모닝 리포트", report, height=300)
 
 # ==========================================
-# 5. 지역별 날씨 조회 (대한민국 지도 그래픽 연동)
+# 5. 지역별 날씨 조회 (TV 뉴스 일기예보 스타일 그래픽)
 # ==========================================
 elif menu == "🌤️ 지역별 날씨 조회":
-    st.markdown('<div class="main-header">🌤️ 실시간 상세 기상 정보 및 지도 조회</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🌤️ TV 일기예보 스타일 실시간 날씨 기상도</div>', unsafe_allow_html=True)
     
     city_coords = {
-        "청주": {"lat": 36.6424, "lon": 127.489, "name": "청주"},
-        "서울": {"lat": 37.5665, "lon": 126.9780, "name": "서울"},
-        "부산": {"lat": 35.1796, "lon": 129.0756, "name": "부산"},
-        "대전": {"lat": 36.3504, "lon": 127.3845, "name": "대전"},
-        "인천": {"lat": 37.4563, "lon": 126.7052, "name": "인천"},
-        "대구": {"lat": 35.8722, "lon": 128.6014, "name": "대구"},
-        "광주": {"lat": 35.1595, "lon": 126.8526, "name": "광주"},
-        "제주": {"lat": 33.4996, "lon": 126.5312, "name": "제주"}
+        "청주": {"lat": 36.6424, "lon": 127.489, "name": "청주", "code": "choongbuk"},
+        "서울": {"lat": 37.5665, "lon": 126.9780, "name": "서울", "code": "seoul"},
+        "부산": {"lat": 35.1796, "lon": 129.0756, "name": "부산", "code": "busan"},
+        "대전": {"lat": 36.3504, "lon": 127.3845, "name": "대전", "code": "daejeon"},
+        "인천": {"lat": 37.4563, "lon": 126.7052, "name": "인천", "code": "incheon"},
+        "대구": {"lat": 35.8722, "lon": 128.6014, "name": "대구", "code": "daegu"},
+        "광주": {"lat": 35.1595, "lon": 126.8526, "name": "광주", "code": "gwangju"},
+        "제주": {"lat": 33.4996, "lon": 126.5312, "name": "제주", "code": "jeju"}
     }
     
     selected_city = st.selectbox("조회할 지역 선택", list(city_coords.keys()), index=0)
     
-    if st.button("실시간 상세 날씨 및 지도 보기"):
+    if st.button("실시간 일기예보 그래픽 보기", type="primary"):
         try:
             info = city_coords[selected_city]
             url = f"https://api.open-meteo.com/v1/forecast?latitude={info['lat']}&longitude={info['lon']}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature,precipitation_probability"
@@ -263,10 +263,17 @@ elif menu == "🌤️ 지역별 날씨 조회":
             weathercode = curr['weathercode']
             
             weather_desc_map = {
-                0: "☀️ 맑음", 1: "🌤️ 대체로 맑음", 2: "⛅ 구름 조금", 3: "☁️ 흐림",
-                51: "🌧️ 이슬비", 61: "비", 63: "🌧️ 강한 비", 71: "❄️ 눈", 95: "⚡ 뇌우"
+                0: ("☀️ 맑음", "#FFF9C4", "#FBC02D"), 
+                1: ("🌤️ 대체로 맑음", "#E3F2FD", "#1976D2"), 
+                2: ("⛅ 구름 조금", "#ECEFF1", "#607D8B"), 
+                3: ("☁️ 흐림", "#CFD8DC", "#455A64"),
+                51: ("🌧️ 이슬비", "#E1F5FE", "#0288D1"), 
+                61: ("비", "#E0F7FA", "#00ACC1"), 
+                63: ("🌧️ 강한 비", "#B2EBF2", "#00838F"), 
+                71: ("❄️ 눈", "#F3E5F5", "#8E24AA"), 
+                95: ("⚡ 뇌우", "#EDE7F6", "#512DA8")
             }
-            weather_status = weather_desc_map.get(weathercode, f"기상 코드: {weathercode}")
+            w_text, bg_color, border_color = weather_desc_map.get(weathercode, (f"기상 코드: {weathercode}", "#F5F5F5", "#9E9E9E"))
             
             hourly = w.get('hourly', {})
             humidity = "정보 없음"
@@ -282,28 +289,38 @@ elif menu == "🌤️ 지역별 날씨 조회":
                 if 'precipitation_probability' in hourly:
                     precip_prob = f"{hourly['precipitation_probability'][idx]}%"
 
-            st.success(f"📍 [{info['name']}] 실시간 기상 현황")
-            
-            col_w1, col_w2, col_w3 = st.columns(3)
-            with col_w1:
-                st.metric(label="현재 기온", value=f"{temp}℃")
-                st.metric(label="실시간 풍속", value=f"{windspeed} m/s")
-            with col_w2:
-                st.metric(label="체감 온도", value=apparent_temp)
-                st.metric(label="습도", value=humidity)
-            with col_w3:
-                st.metric(label="날씨 상태", value=weather_status)
-                st.metric(label="강수 확률", value=precip_prob)
+            # TV 뉴스 일기예보 방송국 스튜디오 카드형 그래픽 HTML UI 구현
+            st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, {bg_color} 0%, #FFFFFF 100%);
+                    border: 3px solid {border_color};
+                    border-radius: 16px;
+                    padding: 25px;
+                    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+                    text-align: center;
+                    margin-bottom: 20px;
+                ">
+                    <h2 style="margin: 0; color: #1E3A8A; font-size: 28px;">📺 대한민국 기상 특보 / [{info['name']}] 지역 예보</h2>
+                    <p style="color: #666; font-size: 14px; margin-top: 5px;">실시간 기상 캐스터 종합 리포트 모드</p>
+                    <hr style="border: 0; height: 1px; background: {border_color}; margin: 15px 0;">
+                    <div style="font-size: 42px; font-weight: bold; color: #333; margin: 10px 0;">
+                        {w_text}
+                    </div>
+                    <div style="font-size: 48px; font-weight: 900; color: #D32F2F; margin: 15px 0;">
+                        {temp}℃ <span style="font-size: 20px; color: #555; font-weight: normal;">(체감 {apparent_temp})</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-around; margin-top: 20px; font-size: 18px; color: #333; background: rgba(255,255,255,0.7); padding: 12px; border-radius: 8px;">
+                        <div>💧 <b>습도:</b> {humidity}</div>
+                        <div>💨 <b>풍속:</b> {windspeed} m/s</div>
+                        <div>☔ <b>강수확률:</b> {precip_prob}</div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
-            st.markdown("")
-            st.markdown(f"### 🗺️ 대한민국 지도 내 [{info['name']}] 위치 그래픽")
-            
-            # 스트림릿 내장 st.map을 활용한 지도 그래픽 표시 (위도/경도 데이터프레임 전달)
-            map_data = pd.DataFrame({
-                'lat': [info['lat']],
-                'lon': [info['lon']]
-            })
-            st.map(map_data, zoom=7, use_container_width=True)
+            # 지도 그래픽은 미니 뷰로 아래에 같이 배치
+            st.markdown(f"📍 **[{info['name']}] 지도 좌표 위치 확인**")
+            map_data = pd.DataFrame({'lat': [info['lat']], 'lon': [info['lon']]})
+            st.map(map_data, zoom=8, use_container_width=True)
                 
         except Exception as e:
             st.error(f"날씨 정보 조회 실패: {e}")
@@ -361,7 +378,6 @@ elif menu == "💌 자녀 응원 메시지 전송":
 # 8. 카카오톡 수동 전송 (증시/급식)
 # ==========================================
 elif menu == "📢 카카오톡 수동 전송 (증시/급식)":
-    st.markdown('<div class="main-header">📢 카카오톡 수동 전송 제어판</div>', unsafe_update_html=True) if hasattr(st, 'markdown') else None
     st.markdown('<div class="main-header">📢 카카오톡 수동 전송 제어판</div>', unsafe_allow_html=True)
     st.write("버튼을 누르는 즉시 최신 실시간 데이터를 크롤링하여 카카오톡으로 발송합니다.")
     
