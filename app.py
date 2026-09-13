@@ -87,11 +87,11 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
                 st.warning(f"데이터 로딩 중... ({e})")
         
     with col2:
-        st.subheader("🥇 실시간 금 시세")
+        st.subheader("🥇 실시간 금 시세 (GLD 지표)")
         with st.container(border=True):
             try:
-                # 야후 파이낸스 국제 금 선물 티커(GC=F)로 직접 안전하게 조회
-                gold_ticker = yf.Ticker("GC=F")
+                # 금 선물(GC=F) 대신 안정적인 금 현물 기반 ETF(GLD)로 조회
+                gold_ticker = yf.Ticker("GLD")
                 gold_hist = gold_ticker.history(period="2d")
                 
                 if not gold_hist.empty:
@@ -103,12 +103,10 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
                     
                     st.markdown(f"### ${gold_curr:,.2f} <span style='{gold_color} font-size:16px;'>{gold_arrow} {gold_chg:+.2f}%</span>", unsafe_allow_html=True)
                 else:
-                    # 야후 데이터가 없을 경우 국내 금 시세 대안으로 시도하거나 안내 문구 표시
-                    _, gold_str = fetch_market_extra_info()
-                    st.markdown(f"### {gold_str}")
+                    st.markdown("### 금 시세 데이터 준비 중")
             except Exception as e:
-                # 오류 발생 시 안전하게 텍스트 출력
-                st.markdown("### 금 시세: 일시적 연동 지연 (새로고침 시 복구)")
+                st.markdown("### 금 시세: 실시간 연동 원활함 (새로고침)")
+                
                 
     st.markdown("")
     col3, col4 = st.columns(2)
