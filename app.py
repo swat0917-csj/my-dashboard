@@ -5,8 +5,6 @@ import json
 import requests
 import pandas as pd
 import yfinance as yf
-import folium
-from streamlit_folium import st_folium
 
 # 기존 stock_info.py 함수들 임포트
 from stock_info import (
@@ -235,61 +233,97 @@ elif menu == "☀️ 최고 투자 종목 & 리포트":
             st.text_area("실시간 모닝 리포트", report, height=300)
 
 # ==========================================
-# 5. 지역별 날씨 조회 (방송국 기상캐스터 스타일 커스텀 지도)
+# 5. 지역별 날씨 조회 (TV 뉴스 일기예보 스타일 그래픽)
 # ==========================================
 elif menu == "🌤️ 지역별 날씨 조회":
-    st.markdown('<div class="main-header">🌤️ TV 기상캐스터 실시간 날씨 지도</div>', unsafe_allow_html=True)
-    st.write("방송국 뉴스 기상도처럼 주요 도시의 날씨와 기온을 지도 위에 직접 표시합니다.")
-
-    # 대한민국 중심 지도 생성
-    m = folium.Map(location=[36.5, 127.5], zoom_start=7, tiles="cartodbpositron")
-
-    cities = {
-        "서울": {"lat": 37.5665, "lon": 126.9780},
-        "청주": {"lat": 36.6424, "lon": 127.4890},
-        "부산": {"lat": 35.1796, "lon": 129.0756},
-        "대구": {"lat": 35.8722, "lon": 128.6014},
-        "광주": {"lat": 35.1595, "lon": 126.8526},
-        "제주": {"lat": 33.4996, "lon": 126.5312},
-        "강릉": {"lat": 37.7519, "lon": 128.8761}
+    st.markdown('<div class="main-header">🌤️ TV 일기예보 스타일 실시간 날씨 기상도</div>', unsafe_allow_html=True)
+    
+    city_coords = {
+        "청주": {"lat": 36.6424, "lon": 127.489, "name": "청주", "code": "choongbuk"},
+        "서울": {"lat": 37.5665, "lon": 126.9780, "name": "서울", "code": "seoul"},
+        "부산": {"lat": 35.1796, "lon": 129.0756, "name": "부산", "code": "busan"},
+        "대전": {"lat": 36.3504, "lon": 127.3845, "name": "대전", "code": "daejeon"},
+        "인천": {"lat": 37.4563, "lon": 126.7052, "name": "인천", "code": "incheon"},
+        "대구": {"lat": 35.8722, "lon": 128.6014, "name": "대구", "code": "daegu"},
+        "광주": {"lat": 35.1595, "lon": 126.8526, "name": "광주", "code": "gwangju"},
+        "제주": {"lat": 33.4996, "lon": 126.5312, "name": "제주", "code": "jeju"}
     }
-
-    for city_name, coord in cities.items():
+    
+    selected_city = st.selectbox("조회할 지역 선택", list(city_coords.keys()), index=0)
+    
+    if st.button("실시간 일기예보 그래픽 보기", type="primary"):
         try:
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={coord['lat']}&longitude={coord['lon']}&current_weather=true"
-            res = requests.get(url).json()
-            temp = res['current_weather']['temperature']
-            w_code = res['current_weather']['weathercode']
+            info = city_coords[selected_city]
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={info['lat']}&longitude={info['lon']}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature,precipitation_probability"
+            w = requests.get(url).json()
             
-            icon_symbol = "☀️" if w_code == 0 else ("⛅" if w_code <= 2 else "☁️")
-            if w_code >= 51: 
-                icon_symbol = "🌧️"
+            curr = w['current_weather']
+            temp = curr['temperature']
+            windspeed = curr['windspeed']
+            weathercode = curr['weathercode']
             
-            html_tooltip = f"""
-            <div style="
-                background: white; 
-                border: 2px solid #1E3A8A; 
-                border-radius: 20px; 
-                padding: 5px 10px; 
-                font-weight: bold; 
-                text-align: center;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-                white-space: nowrap;
-            ">
-                <span style="font-size: 16px;">{icon_symbol}</span> 
-                <span style="color: #1E3A8A; font-size: 14px;">{city_name}</span> 
-                <span style="color: #D32F2F; font-size: 15px;">{temp}℃</span>
-            </div>
-            """
+            weather_desc_map = {
+                0: ("☀️ 맑음", "#FFF9C4", "#FBC02D"), 
+                1: ("🌤️ 대체로 맑음", "#E3F2FD", "#1976D2"), 
+                2: ("⛅ 구름 조금", "#ECEFF1", "#607D8B"), 
+                3: ("☁️ 흐림", "#CFD8DC", "#455A64"),
+                51: ("🌧️ 이슬비", "#E1F5FE", "#0288D1"), 
+                61: ("비", "#E0F7FA", "#00ACC1"), 
+                63: ("🌧️ 강한 비", "#B2EBF2", "#00838F"), 
+                71: ("❄️ 눈", "#F3E5F5", "#8E24AA"), 
+                95: ("⚡ 뇌우", "#EDE7F6", "#512DA8")
+            }
+            w_text, bg_color, border_color = weather_desc_map.get(weathercode, (f"기상 코드: {weathercode}", "#F5F5F5", "#9E9E9E"))
             
-            folium.Marker(
-                location=[coord['lat'], coord['lon']],
-                icon=folium.DivIcon(html=html_tooltip)
-            ).add_to(m)
-        except:
-            pass
+            hourly = w.get('hourly', {})
+            humidity = "정보 없음"
+            apparent_temp = "정보 없음"
+            precip_prob = "정보 없음"
+            
+            if 'time' in hourly and len(hourly['time']) > 0:
+                idx = 0 
+                if 'relativehumidity_2m' in hourly:
+                    humidity = f"{hourly['relativehumidity_2m'][idx]}%"
+                if 'apparent_temperature' in hourly:
+                    apparent_temp = f"{hourly['apparent_temperature'][idx]}℃"
+                if 'precipitation_probability' in hourly:
+                    precip_prob = f"{hourly['precipitation_probability'][idx]}%"
 
-    st_folium(m, width="100%", height=550)
+            # TV 뉴스 일기예보 방송국 스튜디오 카드형 그래픽 HTML UI 구현
+            st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, {bg_color} 0%, #FFFFFF 100%);
+                    border: 3px solid {border_color};
+                    border-radius: 16px;
+                    padding: 25px;
+                    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+                    text-align: center;
+                    margin-bottom: 20px;
+                ">
+                    <h2 style="margin: 0; color: #1E3A8A; font-size: 28px;">📺 대한민국 기상 특보 / [{info['name']}] 지역 예보</h2>
+                    <p style="color: #666; font-size: 14px; margin-top: 5px;">실시간 기상 캐스터 종합 리포트 모드</p>
+                    <hr style="border: 0; height: 1px; background: {border_color}; margin: 15px 0;">
+                    <div style="font-size: 42px; font-weight: bold; color: #333; margin: 10px 0;">
+                        {w_text}
+                    </div>
+                    <div style="font-size: 48px; font-weight: 900; color: #D32F2F; margin: 15px 0;">
+                        {temp}℃ <span style="font-size: 20px; color: #555; font-weight: normal;">(체감 {apparent_temp})</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-around; margin-top: 20px; font-size: 18px; color: #333; background: rgba(255,255,255,0.7); padding: 12px; border-radius: 8px;">
+                        <div>💧 <b>습도:</b> {humidity}</div>
+                        <div>💨 <b>풍속:</b> {windspeed} m/s</div>
+                        <div>☔ <b>강수확률:</b> {precip_prob}</div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # 지도 그래픽은 미니 뷰로 아래에 같이 배치
+            st.markdown(f"📍 **[{info['name']}] 지도 좌표 위치 확인**")
+            map_data = pd.DataFrame({'lat': [info['lat']], 'lon': [info['lon']]})
+            st.map(map_data, zoom=8, use_container_width=True)
+                
+        except Exception as e:
+            st.error(f"날씨 정보 조회 실패: {e}")
 
 # ==========================================
 # 6. 학교 급식 & 실시간 조회
