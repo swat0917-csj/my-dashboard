@@ -116,10 +116,10 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
             st.markdown(f"<div style='font-size:16px; white-space: pre-line;'>{live_meal}</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 2. 1분 실시간 증시 & 뉴스 (UI/UX 대폭 개선 버전)
+# 2. 1분 실시간 증시 & 뉴스 (UI/UX 개선 버전)
 # ==========================================
 elif menu == "⚡ 1분 실시간 증시 & 뉴스":
-    st.markdown('<div class="main-header">⚡ 1분 실시간 증시 & 뉴스 대시보드</div>', unsafe_allow_html.True)
+    st.markdown('<div class="main-header">⚡ 1분 실시간 증시 & 뉴스 대시보드</div>', unsafe_allow_html=True)
     st.write("⏱️ 야후파이낸스 및 네이버 금융 데이터를 바탕으로 실시간 시세와 주요 뉴스를 제공합니다.")
     
     # 상단 제어바 (새로고침 및 관심종목 관리)
