@@ -117,14 +117,14 @@ if menu == "📊 메인 요약 대시보드 (실시간 카드)":
                     st.markdown(f"""
                         <div style='font-size: 15px;'>
                             <b>1돈 (3.75g):</b> <span style='font-size: 18px; font-weight: bold;'>{don_price_krw:,.0f}원</span><br>
-                            <b>1g 당:</b> {g_price_krw:,.0f원} 
+                            <b>1g 당:</b> {g_price_krw:,.0f}원 
                             <span style='{gold_color} font-size: 14px; margin-left: 8px;'>{gold_arrow} {oz_chg:+.2f}%</span>
                         </div>
                     """, unsafe_allow_html=True)
                 else:
                     st.markdown("### 금 시세 환산 대기 중")
             except Exception as e:
-                st.markdown(f"### 금 시세 연동 중 오류 발생")
+                st.markdown(f"### 금 시세 연동 중 오류 발생: {e}")
                 
                 
     st.markdown("")
